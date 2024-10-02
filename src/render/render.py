@@ -1,5 +1,6 @@
 import bpy
 import bmesh
+from material import rigid
 # import trimesh
 
 def trimesh_to_blender_object(trimesh_obj, object_name="Bunny"):
@@ -19,6 +20,7 @@ def trimesh_to_blender_object(trimesh_obj, object_name="Bunny"):
     bm.to_mesh(mesh)
     bm.free()
 
+    # Create object
     obj = bpy.data.objects.new(object_name, mesh)
     bpy.context.collection.objects.link(obj)
 
@@ -28,8 +30,8 @@ def init_render():
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete()
     
-    # Create a new camera
-    bpy.ops.object.camera_add(location=(0, -3, 2), rotation=(1.1, 0, 0))
+    # Create a new camera, with default location and rotation
+    bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(0, 0, 0))
     camera = bpy.context.object
     bpy.context.scene.camera = camera
 
@@ -45,7 +47,6 @@ def init_render():
     
 
 def render_mesh(mesh, output_path):
-    
     mesh_info = {
         "name": mesh.name,
         "vertices": len(mesh.data.vertices),
@@ -53,17 +54,14 @@ def render_mesh(mesh, output_path):
         "faces": len(mesh.data.polygons)
     }
     print(f"Mesh Info: {mesh_info}")
-    bpy.ops.object.select_all(action='DESELECT')
+    
+    # bpy.context.collection.objects.link(mesh)
     
     # Set the mesh as the active object
     bpy.context.view_layer.objects.active = mesh
     mesh.select_set(True)
 
-    # Set the origin to geometry and apply transformations
-    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-
-    print(f"Active object before rendering: {bpy.context.view_layer.objects.active.name}")
+    # print(f"Active object before rendering: {bpy.context.view_layer.objects.active.name}")
     
     # Set render settings and render the image
     bpy.context.scene.render.image_settings.file_format = 'PNG'
@@ -71,3 +69,11 @@ def render_mesh(mesh, output_path):
     bpy.ops.render.render(write_still=True)
     
     return output_path
+
+def render_rigid_body(mesh, rigid_body: rigid.RigidBody, output_path):
+    # mesh = trimesh_to_blender_object(rigid_body.mesh(), object_name=output_path)
+    
+    position = rigid_body.position.to_numpy()
+    mesh.location = position
+    mesh.rotation_euler = rigid_body.get_eular_angles()
+    render_mesh(mesh, output_path)

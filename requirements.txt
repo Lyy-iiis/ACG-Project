@@ -1,0 +1,6 @@
+taichi
+ffmpeg-python
+numpy
+trimesh
+imageio
+bpy
