@@ -1,5 +1,10 @@
 # Update Log
 
+## 24.10.02 22:45 LYY
+
+- Implement basic geometric shapes
+- Now support multi-object rendering
+
 ## 24.10.02 17:30 LYY
 
 - Implement the inertia tensor, now angular velocity is computed correctly.

@@ -1,14 +1,34 @@
 import taichi as ti
 import numpy as np
+from src.material.geometry import *
 
 @ti.data_oriented
 class RigidBody:
-    def __init__(self, mesh, mass=1.0, 
+    def __init__(self, type=None, mesh=None, mass=1.0, 
+                radius=1.0, height=1.0, center=[0.0, 0.0, 0.0],size=[1.0, 1.0],
+                inner_radius=0.5, outer_radius=1.0, resolution=100,
                 position=np.array([0.0, 0.0, 0.0]), 
                 orientation=np.eye(3), 
                 velocity=np.array([0.0, 0.0, 0.0]), 
                 angular_velocity=np.array([0.0, 0.0, 0.0])):
         # self.mesh = mesh
+        if type == 'Ball':
+            mesh = Ball(radius, center, resolution)
+        elif type == 'Box':
+            mesh = Box(size, center)
+        elif type == 'Cylinder':
+            mesh = Cylinder(radius, height, center, resolution)
+        elif type == 'Plane':
+            mesh = Plane(size, center)
+        elif type == 'Sphere':
+            mesh = Sphere(radius, center, resolution)
+        elif type == 'Cone':
+            mesh = Cone(radius, height, center, resolution)
+        elif type == 'Torus':
+            mesh = Torus(inner_radius, outer_radius, center, resolution)
+        elif mesh is None:
+            raise ValueError("Please provide a mesh or a type of geometry")
+            
         self.vertices = ti.Vector.field(3, dtype=ti.f32, shape=len(mesh.vertices))
         self.faces = ti.Vector.field(3, dtype=ti.i32, shape=len(mesh.faces))
         for i in range(len(mesh.vertices)):
@@ -32,7 +52,7 @@ class RigidBody:
         self.force = ti.Vector.field(3, dtype=ti.f32, shape=())
         self.torque = ti.Vector.field(3, dtype=ti.f32, shape=()) # torque relative to the center of mass
         self.angular_momentum = ti.Vector.field(3, dtype=ti.f32, shape=())
-        self.eular_angles = ti.Vector.field(3, dtype=ti.f32, shape=())
+        # self.eular_angles = ti.Vector.field(3, dtype=ti.f32, shape=())
         
     @ti.func
     def mass_center(self) -> ti.types.vector(3, ti.f32):
@@ -91,7 +111,7 @@ class RigidBody:
         self.angular_velocity[None] += angular_acceleration * dt
         angular_velocity_norm = self.angular_velocity[None].norm()
         exp_A = ti.Matrix.identity(ti.f32, 3)
-        
+        print(angular_velocity_norm)
         if angular_velocity_norm > 1e-8:
             angular_velocity_matrix = ti.Matrix([
                 [0, -self.angular_velocity[None][2], self.angular_velocity[None][1]],
