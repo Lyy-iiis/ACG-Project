@@ -1,6 +1,6 @@
 import bpy
 import bmesh
-from material import rigid
+from src.material import rigid, utils
 # import trimesh
 
 def trimesh_to_blender_object(trimesh_obj, object_name="Bunny"):
@@ -23,6 +23,14 @@ def trimesh_to_blender_object(trimesh_obj, object_name="Bunny"):
     # Create object
     obj = bpy.data.objects.new(object_name, mesh)
     bpy.context.collection.objects.link(obj)
+        
+    mesh_info = {
+        "name": obj.name,
+        "vertices": len(obj.data.vertices),
+        "edges": len(obj.data.edges),
+        "faces": len(obj.data.polygons)
+    }
+    print(f"Mesh Info: {mesh_info}")
 
     return obj
 
@@ -46,15 +54,7 @@ def init_render():
     light.data.energy = 1000
     
 
-def render_mesh(mesh, output_path):
-    mesh_info = {
-        "name": mesh.name,
-        "vertices": len(mesh.data.vertices),
-        "edges": len(mesh.data.edges),
-        "faces": len(mesh.data.polygons)
-    }
-    print(f"Mesh Info: {mesh_info}")
-    
+def render_mesh(mesh, output_path):    
     # Set the mesh as the active object
     bpy.context.view_layer.objects.active = mesh
     mesh.select_set(True)
@@ -70,5 +70,5 @@ def render_rigid_body(mesh, rigid_body: rigid.RigidBody, output_path):
     position = rigid_body.position.to_numpy()
     mesh.location = position
     # print(rigid_body.get_eular_angles())
-    mesh.rotation_euler = rigid_body.get_eular_angles()
+    mesh.rotation_euler = utils.get_eular_angles(rigid_body.orientation.to_numpy())
     render_mesh(mesh, output_path)
