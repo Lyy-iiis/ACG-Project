@@ -55,13 +55,9 @@ def render_mesh(mesh, output_path):
     }
     print(f"Mesh Info: {mesh_info}")
     
-    # bpy.context.collection.objects.link(mesh)
-    
     # Set the mesh as the active object
     bpy.context.view_layer.objects.active = mesh
     mesh.select_set(True)
-
-    # print(f"Active object before rendering: {bpy.context.view_layer.objects.active.name}")
     
     # Set render settings and render the image
     bpy.context.scene.render.image_settings.file_format = 'PNG'
@@ -71,9 +67,8 @@ def render_mesh(mesh, output_path):
     return output_path
 
 def render_rigid_body(mesh, rigid_body: rigid.RigidBody, output_path):
-    # mesh = trimesh_to_blender_object(rigid_body.mesh(), object_name=output_path)
-    
     position = rigid_body.position.to_numpy()
     mesh.location = position
+    # print(rigid_body.get_eular_angles())
     mesh.rotation_euler = rigid_body.get_eular_angles()
     render_mesh(mesh, output_path)
