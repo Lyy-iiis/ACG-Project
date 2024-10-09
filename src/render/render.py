@@ -1,7 +1,8 @@
 import bpy
 
-from src.material import rigid, utils
-# import trimesh
+from src.material import rigid, fluid
+import trimesh
+from src.render import utils
 
 class Render:
     def __init__(self, camera_location=(0,0,0), 
@@ -48,3 +49,14 @@ class Render:
             # print(rigid_body.get_eular_angles())
             mesh[i].rotation_euler = utils.get_eular_angles(rigid_body[i].orientation.to_numpy())
         self.render_mesh(mesh, output_path)
+        
+    def render_fluid(self, fluid: fluid.Fluid, output_path):
+        positions = fluid.positions.to_numpy()
+        mesh_list = []
+        for i in range(positions.shape[0]):
+            mesh_list.append(utils.trimesh_to_blender_object(trimesh.creation.icosphere(radius=fluid.particle_radius, center=positions[i]),
+                object_name=f"Fluid_{i}"))
+        
+        for i in range(len(mesh_list)):
+            mesh_list[i].location = positions[i]
+        self.render_mesh(mesh_list, output_path)

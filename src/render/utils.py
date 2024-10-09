@@ -1,5 +1,6 @@
 import bpy
 import bmesh
+import taichi as ti
 
 def trimesh_to_blender_object(trimesh_obj, object_name="Bunny"):
     mesh = bpy.data.meshes.new(object_name)
@@ -31,3 +32,22 @@ def trimesh_to_blender_object(trimesh_obj, object_name="Bunny"):
     print(f"Mesh Info: {mesh_info}")
 
     return obj
+
+
+def get_eular_angles(orientation):
+    R = orientation
+    sy = ti.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
+
+    singular = sy < 1e-6
+
+    if not singular:
+        x = ti.atan2(R[2, 1], R[2, 2])
+        y = ti.atan2(-R[2, 0], sy)
+        z = ti.atan2(R[1, 0], R[0, 0])
+    else:
+        x = ti.atan2(-R[1, 2], R[1, 1])
+        y = ti.atan2(-R[2, 0], sy)
+        z = 0
+    # print(np.linalg.det(R.to_numpy()))
+    eular_angles = ti.Vector([x, y, z])
+    return eular_angles[None][0]

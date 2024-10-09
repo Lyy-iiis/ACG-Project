@@ -77,8 +77,6 @@ class RigidBody:
     
     @ti.kernel
     def inertia(self) -> ti.types.matrix(3, 3, ti.f32):
-        # vertices = self.mesh.vertices
-        # faces = self.mesh.faces
         covarience_tensor = ti.Matrix([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
         canoical_inertia_tensor = ti.Matrix([[1, 0.5, 0.5], [0.5, 1, 0.5], [0.5, 0.5, 1]]) / 60
         
@@ -86,7 +84,6 @@ class RigidBody:
             # ti.static_print(self.faces[i, 0])
             transform = ti.Matrix.cols([self.vertices[self.faces[i][0]], self.vertices[self.faces[i][1]], self.vertices[self.faces[i][2]]])
             covarience_tensor += transform.determinant() * transform @ canoical_inertia_tensor @ transform.transpose()
-
         covarience_tensor *= self.mass / self.volume[None]
         inertia_tensor = ti.Matrix.identity(ti.f32, 3) * ti.Matrix.trace(covarience_tensor) - covarience_tensor
         return inertia_tensor

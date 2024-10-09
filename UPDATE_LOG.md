@@ -1,5 +1,11 @@
 # Update Log
 
+## 24.10.09 14:00 LYY
+
+- Implement basic fluid class, using Lagrangian method to simulate fluid.
+- Implement basic container class, which can contain fluid.
+- TODO: recover mesh from fluid particles for rendering.
+
 ## 24.10.02 22:45 LYY
 
 - Implement basic geometric shapes
