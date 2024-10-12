@@ -1,5 +1,11 @@
 # Update Log
 
+## 24.10.12 16:30 TXC
+
+- Implement basic cloth class, using Mass-Spring model.
+- Implement basic collision detection.
+- TODO: there are some bugs in the cloth rendering codes.
+
 ## 24.10.09 14:00 LYY
 
 - Implement basic fluid class, using Lagrangian method to simulate fluid.

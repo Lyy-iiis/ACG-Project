@@ -10,7 +10,8 @@ class RigidBody:
                 position=np.array([0.0, 0.0, 0.0]), 
                 orientation=np.eye(3), 
                 velocity=np.array([0.0, 0.0, 0.0]), 
-                angular_velocity=np.array([0.0, 0.0, 0.0])):
+                angular_velocity=np.array([0.0, 0.0, 0.0]),
+                collision_threshold=np.finfo(np.float32).tiny):
         # self.mesh = mesh
         if type == 'Ball':
             mesh = Ball(radius, center, resolution)
@@ -48,6 +49,7 @@ class RigidBody:
         self.orientation[None] = orientation
         self.angular_velocity = ti.Vector.field(3, dtype=ti.f32, shape=()) # angular velocity of the body
         self.angular_velocity[None] = angular_velocity
+        self.collision_threshold = collision_threshold
         
         self.force = ti.Vector.field(3, dtype=ti.f32, shape=())
         self.torque = ti.Vector.field(3, dtype=ti.f32, shape=()) # torque relative to the center of mass
@@ -89,9 +91,58 @@ class RigidBody:
         return inertia_tensor
 
     @ti.kernel
-    def apply_force(self, force: ti.types.vector(3, ti.f32), point: ti.types.vector(3, ti.f32)):
+    def apply_external_force(self, force: ti.types.vector(3, ti.f32), point: ti.types.vector(3, ti.f32)):
         self.force[None] += force
         self.torque[None] += ti.math.cross(point - self.position[None], force)
+
+    @ti.func
+    def apply_internal_force(self, force: ti.types.vector(3, ti.f32), point: ti.types.vector(3, ti.f32)):
+        self.force[None] += force
+        self.torque[None] += ti.math.cross(point - self.position[None], force)
+
+    @ti.func
+    def check_collision(self, point: ti.types.vector(3, ti.f32)) -> ti.types.vector(2, ti.f32):
+        min_distance = float('inf')  # Used to record the minimum collision distance
+        closest_normal = ti.Vector([0.0, 0.0, 0.0])  # Used to record the closest normal
+
+        for i in range(self.faces.shape[0]):
+            # Get the three vertices of a triangle
+            v0 = self.position[None] + self.orientation[None] @ self.vertices[self.faces[i][0]]
+            v1 = self.position[None] + self.orientation[None] @ self.vertices[self.faces[i][1]]
+            v2 = self.position[None] + self.orientation[None] @ self.vertices[self.faces[i][2]]
+
+            # Compute the normal vector of the triangle
+            normal = (v1 - v0).cross(v2 - v0).normalized()
+
+            # Compute the distance of the point to the face
+            distance = abs((point - v0).dot(normal))
+
+            # If the distance is less than the threshold, a collision is considered to have occurred
+            if distance < self.collision_threshold:
+                if distance < min_distance:
+                    min_distance = distance
+                    closest_normal = normal
+
+        collision = 0
+        normal = ti.Vector([0.0, 0.0, 0.0])
+        
+        if min_distance < float('inf'):
+            collision = 1
+            normal = closest_normal
+
+        return collision, normal
+        
+    @ti.func
+    def get_velocity_at_point(self, point: ti.types.vector(3, ti.f32)) -> ti.types.vector(3, ti.f32):
+        # Velocity coupling relation
+        r = point - self.position[None]
+        
+        linear_velocity = self.velocity[None]
+        
+        angular_velocity_at_point = self.angular_velocity[None].cross(r)
+        
+        return linear_velocity + angular_velocity_at_point
+
 
     @ti.kernel
     def update(self, dt_old: float):

@@ -1,8 +1,12 @@
 import bpy
 
-from src.material import rigid, fluid
+from src.material import rigid, fluid, cloth
 import trimesh
+import src.render.utils
 from src.render import utils
+import src.material.utils
+import taichi as ti
+import numpy as np
 
 class Render:
     def __init__(self, camera_location=(0,0,0), 
@@ -60,3 +64,8 @@ class Render:
         for i in range(len(mesh_list)):
             mesh_list[i].location = positions[i]
         self.render_mesh(mesh_list, output_path)
+
+    def render_cloth1(self, mesh: list, output_path):
+        # Render the current frame with the cloth mesh
+        # mesh[1].location = np.array([0, 0, -8])
+        self.render_mesh(mesh, output_path)

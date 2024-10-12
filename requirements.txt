@@ -4,3 +4,5 @@ numpy
 trimesh
 imageio
 bpy
+bmesh
+matplotlib
