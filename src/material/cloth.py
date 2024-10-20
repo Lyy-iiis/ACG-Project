@@ -4,13 +4,13 @@ from src.material.geometry import *
 
 @ti.data_oriented
 class Cloth:
-    def __init__(self, num_particles_x=10, num_particles_y=10,
-                 particle_mass=1.0, stiffness=3e4, damping=1e2,
+    def __init__(self, num_particles_x=100, num_particles_y=100,
+                 particle_mass=0.1, stiffness=3e4, damping=0,
                  gravity=np.array([0.0, -9.8, 0.0]),
-                 cloth_size=(1.0, 1.0),
+                 cloth_size=(0.4, 0.4),
                  initial_position=np.array([0.0, 0.0, 0.0]),
                  restitution_coefficient=0.0,
-                 dt=3e-4):
+                 dt=3e-5):
         self.num_particles_x = num_particles_x
         self.num_particles_y = num_particles_y
         self.num_particles = num_particles_x * num_particles_y
@@ -41,7 +41,7 @@ class Cloth:
         self.bend_rest_length = self.structural_rest_length * 2
 
         self.initialize_spring_offsets()
-        self.initialize_particles_wrinkled()
+        self.initialize_particles_flat()
         self.generate_faces()
 
     def initialize_spring_offsets(self):
@@ -109,7 +109,7 @@ class Cloth:
             z = self.initial_position[2] + self.cloth_size[1] * j / (self.num_particles_y - 1)
             
             # Add random offsets to create an undulating effect
-            random_offset = ti.Vector([ti.random() - 0.5, ti.random() - 0.5]) * 0.01
+            random_offset = ti.Vector([ti.random() - 0.5, ti.random() - 0.5]) * 0.001
             x += random_offset[0]
             z += random_offset[1]
             
@@ -153,12 +153,11 @@ class Cloth:
                     pos_j = self.positions[ni, nj]
                     vel_j = self.velocities[ni, nj]
                     self.apply_spring_force(i, j, ni, nj, pos_i, pos_j, vel_i, vel_j, self.bend_rest_length)
-                
-            print(i)
-            print(j)
-            print(self.positions[i, j])
-            print(self.velocities[i, j])
-            print(self.forces[i, j])
+            
+            if i == 0 and j == 0:
+                print(self.positions[i, j])
+                print(self.velocities[i, j])
+                print(self.forces[i, j])
 
     @ti.func
     def apply_spring_force(self, i, j, ni, nj, pos_i, pos_j, vel_i, vel_j, rest_length):
@@ -230,5 +229,5 @@ class Cloth:
 
     def substep(self):
         self.compute_forces()
-        # self.collision_detection(rigid_body)
+        # self.collision_detection(rigid_body, self.dt)
         self.update()

@@ -65,7 +65,30 @@ class Render:
             mesh_list[i].location = positions[i]
         self.render_mesh(mesh_list, output_path)
 
-    def render_cloth1(self, mesh: list, output_path):
-        # Render the current frame with the cloth mesh
-        # mesh[1].location = np.array([0, 0, -8])
-        self.render_mesh(mesh, output_path)
+    def render_cloth1(self, mesh: bpy.types.Object, output_path):
+        # # Render the current frame with the cloth mesh
+        # self.render_mesh(mesh, output_path)
+        # # Clear all existing meshes before rendering
+        # bpy.ops.object.select_all(action='DESELECT')
+        # bpy.ops.object.select_by_type(type='MESH')
+        # bpy.ops.object.delete()
+        
+        # Clear all existing meshes before rendering
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in bpy.data.objects:
+            if obj.type == 'MESH' and obj != mesh:
+                obj.select_set(True)
+        bpy.ops.object.delete()
+
+        # Ensure the mesh is the active object in the scene
+        bpy.context.view_layer.objects.active = mesh
+        
+        # Set render parameters (like resolution, camera, etc.)
+        bpy.context.scene.render.filepath = output_path  # Set the output path
+        bpy.context.scene.render.engine = 'CYCLES'  # Use Cycles engine for rendering
+
+        # Set the output image format
+        bpy.context.scene.render.image_settings.file_format = 'PNG'
+        
+        # Render the current frame to the given file path
+        bpy.ops.render.render(write_still=True)

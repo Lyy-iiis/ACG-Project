@@ -9,7 +9,7 @@ import os
 object_name = 'Bunny'
 device = ti.cpu # Set to ti.cpu when debugging
 output_dir = 'output'
-Dt = 3e-4
+Dt = 3e-5
 substeps = int(1 / 60 // Dt)
 
 def test_rigid():
@@ -84,7 +84,7 @@ def test_cloth1():
     mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
     print("Mesh loaded successfully")
 
-    Rigid_1 = rigid.RigidBody(mesh=mesh, position=np.array([0, 0, -8]))
+    # Rigid_1 = rigid.RigidBody(mesh=mesh, position=np.array([0, 0, -8]))
 
     Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([0, 1, -8]))
     print("Cloth created successfully")
@@ -101,14 +101,12 @@ def test_cloth1():
         #         utils.mesh(Rigid_1.vertices, Rigid_1.faces), 
         #         object_name="Rigid")
         mesh_cloth = src.render.utils.trimesh_to_blender_object(
-                utils.mesh(flat_positions, Cloth.faces), 
-                object_name="Cloth")
-        
-        for j in range(substeps):
-            # # Apply gravity to each mass point of the cloth
-            # Cloth.compute_forces()
-            
+                utils.mesh(flat_positions, Cloth.faces),
+                object_name="ClothMesh")
+
+        for _ in range(substeps):  
             Cloth.substep()
+            # Rigid_1.update(Dt)
 
             # Detecting collisions between cloth and rigid bodies
             # Cloth.collision_detection(Rigid_1, 0.01)
@@ -119,7 +117,8 @@ def test_cloth1():
 
         print(f"Frame {i}")
         # Renderer.render_cloth1([mesh_cloth, mesh_rigid], f'{output_dir}/output_{i}.png')
-        Renderer.render_cloth1([mesh_cloth], f'{output_dir}/output_{i}.png')
+        Renderer.render_cloth1(mesh_cloth, f'{output_dir}/output_{i}.png')
+        # Renderer.render_rigid_body([mesh_rigid], [Rigid_1], f'{output_dir}/output_{i}.png')
 
 
     video.create_video(output_dir, 'output.mp4')
@@ -128,9 +127,9 @@ def test_cloth1():
  
 def main():
     ti.init(arch=device)
-    test_rigid()
+    # test_rigid()
     # test_fluid()
-    # test_cloth1()
+    test_cloth1()
     
 if __name__ == '__main__':
     main()
