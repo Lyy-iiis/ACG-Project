@@ -153,11 +153,6 @@ class Cloth:
                     pos_j = self.positions[ni, nj]
                     vel_j = self.velocities[ni, nj]
                     self.apply_spring_force(i, j, ni, nj, pos_i, pos_j, vel_i, vel_j, self.bend_rest_length)
-            
-            if i == 0 and j == 0:
-                print(self.positions[i, j])
-                print(self.velocities[i, j])
-                print(self.forces[i, j])
 
     @ti.func
     def apply_spring_force(self, i, j, ni, nj, pos_i, pos_j, vel_i, vel_j, rest_length):

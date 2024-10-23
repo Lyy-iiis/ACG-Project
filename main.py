@@ -6,10 +6,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-object_name = 'Bunny'
-device = ti.cpu # Set to ti.cpu when debugging
+object_name = 'bunny'
+device = ti.gpu # Set to ti.cpu when debugging
 output_dir = 'output'
 Dt = 3e-5
+Frame = 100
+demo = False
 substeps = int(1 / 60 // Dt)
 
 def test_rigid():
@@ -61,21 +63,31 @@ def test_fluid():
     
     Container = container.Container(1.0, 1.0, 1.0, Fluid)
 
-    Renderer.render_fluid(Fluid, f'{output_dir}/output_0.png')
-    # positions = Fluid.positions.to_numpy()
-
-    # positions = np.array(positions)
-    # print(positions.shape)
-    # fig = plt.figure()
-    # ax = fig.add_subplot(111, projection='3d')
-
-    # for i in range(positions.shape[0]):
-    #     ax.scatter(positions[i, 0], positions[i, 1], positions[i, 2])
-
-    # ax.set_xlabel('X')
-    # ax.set_ylabel('Y')
-    # ax.set_zlabel('Z')
-    # plt.show()
+    if demo:
+        for i in range(Frame):
+            print(f"Frame {i}")
+            if not os.path.exists(f'{output_dir}/{i}'):
+                os.makedirs(f'{output_dir}/{i}')
+            Container.update()
+            Fluid.step()
+            Fluid.positions_to_ply(f'{output_dir}/{i}/output_{i}.ply')
+        
+        os.system(f"python3 src/surface.py --input_dir {output_dir}")
+        
+        for i in range(Frame):
+            mesh = utils.get_rigid_from_mesh(f'{output_dir}/{i}/output_{i}.obj')
+            Renderer.render_fluid_mesh(mesh, f'{output_dir}/{i}/output_{i}.png')
+    else:
+        Renderer.add_fluid(Fluid)
+        for i in range(Frame):
+            print(f"Frame {i}")
+            if not os.path.exists(f'{output_dir}/{i}'):
+                os.makedirs(f'{output_dir}/{i}')
+            Container.update()
+            Fluid.step()
+            Renderer.render_fluid(Fluid, f'{output_dir}/{i}/output_{i}.png')
+            
+    video.create_video(output_dir, 'output.mp4')
 
 def test_cloth1():
     Renderer = render.Render()
@@ -127,9 +139,10 @@ def test_cloth1():
  
 def main():
     ti.init(arch=device)
+    
     # test_rigid()
-    # test_fluid()
-    test_cloth1()
+    test_fluid()
+    # test_cloth1()
     
 if __name__ == '__main__':
     main()

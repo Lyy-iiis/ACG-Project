@@ -1,8 +1,0 @@
-taichi
-ffmpeg-python
-numpy
-trimesh
-imageio
-bpy
-bmesh
-matplotlib

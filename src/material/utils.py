@@ -23,6 +23,17 @@ def mesh(vertices, faces):
     mesh.faces = faces.to_numpy()
     return mesh
 
+def write_ply(position, file):
+    with open(file, 'w') as f:
+        f.write('ply\n')
+        f.write('format ascii 1.0\n')
+        f.write(f'element vertex {len(position)}\n')
+        f.write('property float x\n')
+        f.write('property float y\n')
+        f.write('property float z\n')
+        f.write('end_header\n')
+        for pos in position:
+            f.write(f'{pos[0]} {pos[1]} {pos[2]}\n')
 # @ti.func
 # def sample_points(vertices, faces, num_points):
 #     volume = []

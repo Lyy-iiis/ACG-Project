@@ -7,6 +7,7 @@ class Container:
         self.height = height
         self.depth = depth
         self.fluid = fluid
+        self.offset = fluid.original_positions
 
     @ti.func
     def is_within_bounds(self, position: ti.types.vector(3, ti.f32)) -> ti.i32:
@@ -17,16 +18,12 @@ class Container:
     def update(self):
         time_step = self.fluid.time_step
         for i in range(self.fluid.num_particles):
-            self.handle_boundary_collision(self.fluid.positions[i])
-            self.fluid.positions[i] += self.fluid.velocities[i] * time_step
-
-    @ti.kernel
-    def handle_boundary_collision(self, position: ti.types.vector(3, ti.f32)):
-        if not self.is_within_bounds(position):
-            x, y, z = position
-            x = min(max(x, 0), self.width)
-            y = min(max(y, 0), self.height)
-            z = min(max(z, 0), self.depth)
-            position[0] = x
-            position[1] = y
-            position[2] = z
+            future_pos = self.fluid.positions[i] + self.fluid.velocities[i] * time_step
+            x, y, z = future_pos - self.offset
+            # print(x, y, z)
+            if x > self.width or x < -self.width:
+                self.fluid.velocities[i][0] = -self.fluid.velocities[i][0]
+            if y > self.height or y < -self.height:
+                self.fluid.velocities[i][1] = -self.fluid.velocities[i][1]
+            if z > self.depth or z < -self.depth:
+                self.fluid.velocities[i][2] = -self.fluid.velocities[i][2]

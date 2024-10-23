@@ -20,6 +20,7 @@ class Fluid:
 
         self.mesh = mesh
         self.mesh.vertices += position
+        self.original_positions = ti.Vector(position)
         self.positions = ti.Vector.field(3, dtype=ti.f32, shape=num_particles)
         self.velocities = ti.Vector.field(3, dtype=ti.f32, shape=num_particles)
         self.densities = ti.field(dtype=ti.f32, shape=num_particles)
@@ -100,3 +101,7 @@ class Fluid:
         self.compute_densities_and_pressures()
         self.compute_forces()
         self.update_particles()
+        
+    def positions_to_ply(self, output_path):
+        positions = self.positions.to_numpy()
+        write_ply(positions, output_path)

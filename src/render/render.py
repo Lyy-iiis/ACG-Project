@@ -1,6 +1,6 @@
 import bpy
 
-from src.material import rigid, fluid, cloth
+from src.material import rigid, fluid, cloth, container
 import trimesh
 import src.render.utils
 from src.render import utils
@@ -31,6 +31,8 @@ class Render:
         bpy.ops.object.light_add(type='POINT', location=light_location)
         light = bpy.context.object
         light.data.energy = light_energy
+        
+        self.fluid_mesh = []
 
 
     def render_mesh(self, mesh_list:list, output_path):    
@@ -54,16 +56,52 @@ class Render:
             mesh[i].rotation_euler = utils.get_eular_angles(rigid_body[i].orientation.to_numpy())
         self.render_mesh(mesh, output_path)
         
-    def render_fluid(self, fluid: fluid.Fluid, output_path):
-        positions = fluid.positions.to_numpy()
-        mesh_list = []
+    def add_fluid(self, fluid: fluid.Fluid):
+        positions = fluid.positions.to_numpy()        
         for i in range(positions.shape[0]):
-            mesh_list.append(utils.trimesh_to_blender_object(trimesh.creation.icosphere(radius=fluid.particle_radius, center=positions[i]),
+            self.fluid_mesh.append(utils.trimesh_to_blender_object(trimesh.creation.icosphere(radius=fluid.particle_radius, center=positions[i]),
                 object_name=f"Fluid_{i}"))
         
-        for i in range(len(mesh_list)):
-            mesh_list[i].location = positions[i]
-        self.render_mesh(mesh_list, output_path)
+    def render_fluid(self, fluid: fluid.Fluid, output_path):
+        for i in range(len(self.fluid_mesh)):
+            self.fluid_mesh[i].location = fluid.positions[i]
+        self.render_mesh(self.fluid_mesh, output_path)
+        
+    def render_fluid_mesh(self, mesh, output_path):
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in bpy.data.objects:
+            if obj.type == 'MESH' and obj != mesh:
+                obj.select_set(True)
+        bpy.ops.object.delete()
+        mesh = utils.trimesh_to_blender_object(mesh, object_name="Fluid")
+        self.render_mesh([mesh], output_path)
+        
+        
+    def add_container(self, container: container.Container):
+        assert False, "Not implemented"
+        glass_material = bpy.data.materials.new(name="GlassMaterial")
+        glass_material.use_nodes = True
+        bsdf = glass_material.node_tree.nodes["Principled BSDF"]
+        # bsdf.inputs['Base Color'].default_value = (1, 1, 1, 1)
+        bsdf.inputs["Transmission"].default_value = 1
+        bsdf.inputs['Roughness'].default_value = 0
+        bsdf.inputs['IOR'].default_value = 1
+        
+        # Create a mesh for the container
+        bpy.ops.mesh.primitive_cube_add(size=2, location=container.offset.to_numpy())
+        container_mesh = bpy.context.object
+        container_mesh.scale = (container.width, container.height, container.depth)
+        
+        # Assign the glass material to the container mesh
+        if container_mesh.data.materials:
+            container_mesh.data.materials[0] = glass_material
+        else:
+            container_mesh.data.materials.append(glass_material)
+        
+        # Set the container mesh as a rigid body with passive type
+        bpy.ops.rigidbody.object_add()
+        container_mesh.rigid_body.type = 'PASSIVE'
+        container_mesh.rigid_body.collision_shape = 'MESH'
 
     def render_cloth1(self, mesh: bpy.types.Object, output_path):
         # # Render the current frame with the cloth mesh
