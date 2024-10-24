@@ -33,7 +33,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_dir', type=str, required=True)
     parser.add_argument('--num_workers', type=int, default=4)
-    parser.add_argument('--radius', type=float, default=0.02)
+    parser.add_argument('--radius', type=float, default=0.01)
     parser.add_argument('--smoothing-length', type=float, default=3.5)
 
     args = parser.parse_args()

@@ -1,5 +1,6 @@
 import open3d as o3d
 import numpy as np
+import tqdm
 
 def visualize_ply(file_path):
     # Load the PLY file
@@ -13,10 +14,12 @@ def visualize_ply(file_path):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(points[:, 0], points[:, 1], points[:, 2], s=1)
-    plt.savefig(file_path + ".png")
+    file_path = file_path.split("/")[:-1]
+    file_path = "/".join(file_path)
+    plt.savefig(file_path + "/output_pc.png")
+    plt.close()
 
-if __name__ == "__main__":
-    for i in range(20):
-        print(i)
-        file_path = f"output/{i}/output_{i}.ply"  # Replace with your actual file path
+def visualize(output_dir, frame):
+    for i in tqdm.tqdm(range(frame)):
+        file_path = f"{output_dir}/{i}/output_{i}.ply"
         visualize_ply(file_path)

@@ -4,13 +4,12 @@ from .utils import *
 
 @ti.data_oriented
 class Fluid:
-    def __init__(self, domain_size, mesh, 
+    def __init__(self, mesh, 
                  position=np.array([0.0, 0.0, 0.0]),
-                 gravity=np.array([0.0, -9.8, 0.0]), 
+                 gravity=np.array([0.0, -9.8, 0.0]),
                  viscosity=0.1, rest_density=1000.0,
-                 time_step=5e-4):
+                 time_step=2e-3):
         # self.num_particles = num_particles
-        self.domain_size = domain_size
         self.gravity = ti.Vector.field(3, dtype=ti.f32, shape=())
         self.gravity[None] = gravity
         self.viscosity = viscosity
@@ -189,12 +188,12 @@ class Fluid:
 
     @ti.kernel
     def update_particles(self):
-        v = ti.Vector([0.0, 0.0, 0.0])
+        x = ti.Vector([0.0, 0.0, 0.0])
         for i in range(self.num_particles):
             self.velocities[i] += self.forces[i] * self.time_step / self.mass[i]
             self.positions[i] += self.velocities[i] * self.time_step
-            v += self.velocities[i]
-        print("average velocity: ", v / self.num_particles)
+            x += self.positions[i]
+        print("average position: ", x / self.num_particles)
 
     def step(self):
         self.compute_densities_and_pressures()

@@ -1,5 +1,10 @@
 # Update Log
 
+## 24.10.24 20:00 LYY
+
+- Finish container boundary condition, now fluid move correctly.
+- Clean up the code, more modular and readable.
+
 ## 24.10.24 13:00 LYY
 
 - Finish WCSPH, including pressure force, viscosity force, gravity force, now the fluid can be simulated correctly.

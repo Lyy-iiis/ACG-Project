@@ -1,8 +1,9 @@
 import taichi as ti
 import src.material
 import src.material.geometry
-from src.render import render, video
+from src.render import render, video, multi_thread
 from src.material import rigid, fluid, cloth, utils, container
+from src.visualize import visualizer
 import src.render.utils
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,12 +13,11 @@ object_name = 'bunny'
 device = ti.gpu # Set to ti.cpu when debugging
 output_dir = 'output'
 Dt = 3e-5
-Frame = 20
-demo = True
+Frame = 200
+demo = False
 substeps = int(1 / 60 // Dt)
 
 def test_rigid():
-    # ti.init(arch=device)
     
     Renderer = render.Render()
     print("Starting main function")
@@ -28,10 +28,7 @@ def test_rigid():
     Rigid_1 = rigid.RigidBody(mesh=mesh, position=np.array([0,0,-4]))
     Rigid_2 = rigid.RigidBody("Ball", radius=0.3, position=np.array([1,0,-4]))
     print("Rigid body created successfully")
-    
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
+        
     force = ti.Vector([0.5,0.5,0.5]) # don't apply too big force !!!
     mesh_1 = src.render.utils.trimesh_to_blender_object(
             utils.mesh(Rigid_1.vertices, Rigid_1.faces), 
@@ -55,47 +52,30 @@ def test_fluid():
     print("Starting main function")
     
     # mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
-    box_size = [0.4, 0.4, 0.4]
-    mesh = src.material.geometry.Box(box_size, [0.0, 0.0, 0.0])
-    # print(mesh.vertices)
-    print("Mesh loaded successfully")
-    # resolution = 0.04
-    # mass = 0.5 ** 3 * 1000
-    # particle_mass = 4 * resolution ** 3 * np.pi * 1000 / (3 * 100)
-    # particle_num = int(mass / particle_mass)
-    # print(f"Particle number: {particle_num}")
-    # print(f"Particle mass: {particle_mass}")
-    Fluid = fluid.Fluid([0.5, 0.5, 0.5], mesh, position=np.array([0,0,-4]))
-    print("Fluid created successfully")
+    # box_size = [0.4, 0.4, 0.4]
+    # mesh = src.material.geometry.Box(box_size, [0.0, 0.0, 0.0])
+    # print("Mesh loaded successfully")
     
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    # Fluid = fluid.Fluid(mesh, position=np.array([0,0,-4]))
+    # print("Fluid created successfully")
     
-    # Container = container.Container(1.0, 1.0, 1.0, Fluid)
-
+    # Container = container.Container(0.6, 0.3, 0.6, Fluid)
+    # print("Container created successfully")
+    
+    # for i in range(Frame):
+    #     print(f"Frame {i}")
+    #     if not os.path.exists(f'{output_dir}/{i}'):
+    #         os.makedirs(f'{output_dir}/{i}')
+    #     Fluid.step()
+    #     Container.enforce_domain_boundary()
+    #     Fluid.positions_to_ply(f'{output_dir}/{i}/output_{i}.ply')
+    
+    print("Visualizing the fluid") 
     if demo:
-        for i in range(Frame):
-            print(f"Frame {i}")
-            if not os.path.exists(f'{output_dir}/{i}'):
-                os.makedirs(f'{output_dir}/{i}')
-            # Container.update()
-            Fluid.step()
-            Fluid.positions_to_ply(f'{output_dir}/{i}/output_{i}.ply')
-        
         os.system(f"python3 src/visualize/surface.py --input_dir {output_dir}")
-        
-        for i in range(Frame):
-            mesh = utils.get_rigid_from_mesh(f'{output_dir}/{i}/output_{i}.obj')
-            Renderer.render_fluid_mesh(mesh, f'{output_dir}/{i}/output_{i}.png')
+        multi_thread.process(output_dir, Frame)
     else:
-        Renderer.add_fluid(Fluid)
-        for i in range(Frame):
-            print(f"Frame {i}")
-            if not os.path.exists(f'{output_dir}/{i}'):
-                os.makedirs(f'{output_dir}/{i}')
-            # Container.update()
-            Fluid.step()
-            Renderer.render_fluid(Fluid, f'{output_dir}/{i}/output_{i}.png')
+        visualizer.visualize(output_dir, Frame)
             
     video.create_video(output_dir, 'output.mp4')
 
@@ -114,8 +94,6 @@ def test_cloth1():
     flat_positions = ti.Vector.field(3, dtype=ti.f32, shape=(Cloth.num_particles,))
 
 
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
 
     for i in range(100):
         Cloth.get_flat_positions(flat_positions)
@@ -149,7 +127,9 @@ def test_cloth1():
  
 def main():
     ti.init(arch=device)
-    
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        
     # test_rigid()
     test_fluid()
     # test_cloth1()

@@ -12,8 +12,20 @@ def trimesh_to_blender_object(trimesh_obj, object_name="Bunny"):
     bm.verts.ensure_lookup_table()
 
     # Add faces
+    existing_faces = set()
     for face in trimesh_obj.faces:
-        bm.faces.new([bm.verts[i] for i in face])
+        face_tuple = tuple(sorted(face))
+        if face_tuple in existing_faces:
+            # Skip faces that already exist
+            continue
+        try:
+            bm.faces.new([bm.verts[i] for i in face])
+            existing_faces.add(face_tuple)
+        except ValueError:
+            # Skip invalid faces
+            continue
+    # for face in trimesh_obj.faces:
+    #     bm.faces.new([bm.verts[i] for i in face])
     bm.faces.ensure_lookup_table()
 
     bm.to_mesh(mesh)
