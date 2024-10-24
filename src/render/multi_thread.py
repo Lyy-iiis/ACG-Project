@@ -1,7 +1,7 @@
 import os
 import multiprocessing as mp
 from tqdm import tqdm
-from contextlib import contextmanager
+# from contextlib import contextmanager
 from src.material import utils
 from src.render import render
 import sys
@@ -21,8 +21,8 @@ import sys
             
             
 def process_frame(Renderer, output_dir, i):
-    mesh = utils.get_rigid_from_mesh(f'{output_dir}/{i}/output_{i}.obj')
-    Renderer.render_fluid_mesh(mesh, f'{output_dir}/{i}/output_{i}.png')
+    mesh = utils.get_rigid_from_mesh(f'{output_dir}/{i}/output.obj')
+    Renderer.render_fluid_mesh(mesh, f'{output_dir}/{i}/output.png')
     
 def worker(Renderer, output_dir, frame):
     try:

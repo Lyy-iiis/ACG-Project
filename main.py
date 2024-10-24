@@ -14,7 +14,7 @@ device = ti.gpu # Set to ti.cpu when debugging
 output_dir = 'output'
 Dt = 3e-5
 Frame = 200
-demo = False
+demo = True
 substeps = int(1 / 60 // Dt)
 
 def test_rigid():
@@ -43,7 +43,7 @@ def test_rigid():
         Rigid_1.update(0.01)
         Rigid_2.update(0.01)
         print(f"Frame {i}")
-        Renderer.render_rigid_body([mesh_1,mesh_2], [Rigid_1,Rigid_2], f'{output_dir}/output_{i}.png')
+        Renderer.render_rigid_body([mesh_1,mesh_2], [Rigid_1,Rigid_2], f'{output_dir}/output.png')
         
     video.create_video(output_dir, 'output.mp4')
     
@@ -52,23 +52,23 @@ def test_fluid():
     print("Starting main function")
     
     # mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
-    # box_size = [0.4, 0.4, 0.4]
-    # mesh = src.material.geometry.Box(box_size, [0.0, 0.0, 0.0])
-    # print("Mesh loaded successfully")
+    box_size = [0.4, 0.4, 0.4]
+    mesh = src.material.geometry.Box(box_size, [0.0, 0.0, 0.0])
+    print("Mesh loaded successfully")
     
-    # Fluid = fluid.Fluid(mesh, position=np.array([0,0,-4]))
-    # print("Fluid created successfully")
+    Fluid = fluid.Fluid(mesh, position=np.array([0,0,-4]))
+    print("Fluid created successfully")
     
-    # Container = container.Container(0.6, 0.3, 0.6, Fluid)
-    # print("Container created successfully")
+    Container = container.Container(0.6, 0.3, 0.6, Fluid)
+    print("Container created successfully")
     
-    # for i in range(Frame):
-    #     print(f"Frame {i}")
-    #     if not os.path.exists(f'{output_dir}/{i}'):
-    #         os.makedirs(f'{output_dir}/{i}')
-    #     Fluid.step()
-    #     Container.enforce_domain_boundary()
-    #     Fluid.positions_to_ply(f'{output_dir}/{i}/output_{i}.ply')
+    for i in range(Frame):
+        print(f"Frame {i}")
+        if not os.path.exists(f'{output_dir}/{i}'):
+            os.makedirs(f'{output_dir}/{i}')
+        Fluid.step()
+        Container.enforce_domain_boundary()
+        Fluid.positions_to_ply(f'{output_dir}/{i}/output.ply')
     
     print("Visualizing the fluid") 
     if demo:
@@ -117,7 +117,7 @@ def test_cloth1():
 
         print(f"Frame {i}")
         # Renderer.render_cloth1([mesh_cloth, mesh_rigid], f'{output_dir}/output_{i}.png')
-        Renderer.render_cloth1(mesh_cloth, f'{output_dir}/output_{i}.png')
+        Renderer.render_cloth1(mesh_cloth, f'{output_dir}/output.png')
         # Renderer.render_rigid_body([mesh_rigid], [Rigid_1], f'{output_dir}/output_{i}.png')
 
 

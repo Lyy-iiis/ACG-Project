@@ -29,5 +29,5 @@ class Container:
     
     @ti.func
     def simulate_collisions(self, p_i, vec):
-        c_f = 0.5
+        c_f = 0.9
         self.fluid.velocities[p_i] -= (1.0 + c_f) * ti.math.dot(self.fluid.velocities[p_i],vec) * vec

@@ -1,6 +1,7 @@
 import taichi as ti
 import numpy as np
 from .utils import *
+import time
 
 @ti.data_oriented
 class Fluid:
@@ -49,6 +50,7 @@ class Fluid:
         self.grid_size_y = (max_y - min_y) / (self.grid_y - 1)
         self.grid_size_z = (max_z - min_z) / (self.grid_z - 1)
 
+        time1 = time.time()
         for x in np.linspace(min_x, max_x, self.grid_x):
             for y in np.linspace(min_y, max_y, self.grid_y):
                 for z in np.linspace(min_z, max_z, self.grid_z):
@@ -57,7 +59,8 @@ class Fluid:
                         self.grid_dict[grid_num] = num_particles
                         num_particles += 1
                     grid_num += 1
-
+        time2 = time.time()
+        print(f"Time taken to initialize particles: {time2 - time1}")
         self.num_particles = num_particles
         self.mass = ti.field(dtype=ti.f32, shape=num_particles)
         self.positions = ti.Vector.field(3, dtype=ti.f32, shape=num_particles)
@@ -166,7 +169,7 @@ class Fluid:
             self.densities[i] = ti.max(self.densities[i], self.rest_density)
             self.pressures[i] = self.stiffness * ((self.densities[i] / self.rest_density) ** 7 - 1)
             total_density += self.densities[i]
-        print("average: ", total_density / self.num_particles)
+        print("average density: ", total_density / self.num_particles)
 
     @ti.kernel
     def compute_forces(self):
