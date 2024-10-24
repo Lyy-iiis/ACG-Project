@@ -33,8 +33,7 @@ class Render:
         light.data.energy = light_energy
         
         self.fluid_mesh = []
-
-
+        
     def render_mesh(self, mesh_list:list, output_path):    
         # Set the mesh as the active object
         for mesh in mesh_list:
@@ -57,13 +56,16 @@ class Render:
         self.render_mesh(mesh, output_path)
         
     def add_fluid(self, fluid: fluid.Fluid):
-        positions = fluid.positions.to_numpy()        
+        positions = fluid.positions.to_numpy()  
+        # print(f"Fluid positions: {positions}")
+        # assert False
         for i in range(positions.shape[0]):
-            self.fluid_mesh.append(utils.trimesh_to_blender_object(trimesh.creation.icosphere(radius=fluid.particle_radius, center=positions[i]),
+            self.fluid_mesh.append(utils.trimesh_to_blender_object(trimesh.creation.icosphere(radius=0.02, center=positions[i]),
                 object_name=f"Fluid_{i}"))
         
     def render_fluid(self, fluid: fluid.Fluid, output_path):
         for i in range(len(self.fluid_mesh)):
+            # print(f"Fluid position: {fluid.positions[i]}")
             self.fluid_mesh[i].location = fluid.positions[i]
         self.render_mesh(self.fluid_mesh, output_path)
         

@@ -1,4 +1,6 @@
 import taichi as ti
+import src.material
+import src.material.geometry
 from src.render import render, video
 from src.material import rigid, fluid, cloth, utils, container
 import src.render.utils
@@ -10,8 +12,8 @@ object_name = 'bunny'
 device = ti.gpu # Set to ti.cpu when debugging
 output_dir = 'output'
 Dt = 3e-5
-Frame = 100
-demo = False
+Frame = 1
+demo = True
 substeps = int(1 / 60 // Dt)
 
 def test_rigid():
@@ -53,22 +55,30 @@ def test_fluid():
     print("Starting main function")
     
     mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
+    box_size = [0.25, 0.25, 0.25]
+    # mesh = src.material.geometry.Box(box_size, [0.0, 0.0, 0.0])
+    # print(mesh.vertices)
     print("Mesh loaded successfully")
-    
-    Fluid = fluid.Fluid(1000, [1.0, 1.0, 1.0], 0.01, mesh=mesh, position=np.array([0,0,-4]))
+    # resolution = 0.04
+    # mass = 0.5 ** 3 * 1000
+    # particle_mass = 4 * resolution ** 3 * np.pi * 1000 / (3 * 100)
+    # particle_num = int(mass / particle_mass)
+    # print(f"Particle number: {particle_num}")
+    # print(f"Particle mass: {particle_mass}")
+    Fluid = fluid.Fluid([0.5, 0.5, 0.5], mesh, position=np.array([0,0,-4]))
     print("Fluid created successfully")
     
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    Container = container.Container(1.0, 1.0, 1.0, Fluid)
+    # Container = container.Container(1.0, 1.0, 1.0, Fluid)
 
     if demo:
         for i in range(Frame):
             print(f"Frame {i}")
             if not os.path.exists(f'{output_dir}/{i}'):
                 os.makedirs(f'{output_dir}/{i}')
-            Container.update()
+            # Container.update()
             Fluid.step()
             Fluid.positions_to_ply(f'{output_dir}/{i}/output_{i}.ply')
         
@@ -83,7 +93,7 @@ def test_fluid():
             print(f"Frame {i}")
             if not os.path.exists(f'{output_dir}/{i}'):
                 os.makedirs(f'{output_dir}/{i}')
-            Container.update()
+            # Container.update()
             Fluid.step()
             Renderer.render_fluid(Fluid, f'{output_dir}/{i}/output_{i}.png')
             

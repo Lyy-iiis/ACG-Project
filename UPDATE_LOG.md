@@ -1,5 +1,10 @@
 # Update Log
 
+## 24.10.24 10:00 LYY
+
+- Prepare the basic feature for SPH.
+- Change the sampling method from random to regular grid.
+
 ## 24.10.23 16:30 LYY
 
 - Finish surface reconstruction from fluid particles.
