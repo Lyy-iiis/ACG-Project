@@ -12,7 +12,7 @@ object_name = 'bunny'
 device = ti.gpu # Set to ti.cpu when debugging
 output_dir = 'output'
 Dt = 3e-5
-Frame = 1
+Frame = 20
 demo = True
 substeps = int(1 / 60 // Dt)
 
@@ -54,9 +54,9 @@ def test_fluid():
     Renderer = render.Render()
     print("Starting main function")
     
-    mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
-    box_size = [0.25, 0.25, 0.25]
-    # mesh = src.material.geometry.Box(box_size, [0.0, 0.0, 0.0])
+    # mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
+    box_size = [0.4, 0.4, 0.4]
+    mesh = src.material.geometry.Box(box_size, [0.0, 0.0, 0.0])
     # print(mesh.vertices)
     print("Mesh loaded successfully")
     # resolution = 0.04
@@ -82,7 +82,7 @@ def test_fluid():
             Fluid.step()
             Fluid.positions_to_ply(f'{output_dir}/{i}/output_{i}.ply')
         
-        os.system(f"python3 src/surface.py --input_dir {output_dir}")
+        os.system(f"python3 src/visualize/surface.py --input_dir {output_dir}")
         
         for i in range(Frame):
             mesh = utils.get_rigid_from_mesh(f'{output_dir}/{i}/output_{i}.obj')

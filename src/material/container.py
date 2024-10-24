@@ -8,6 +8,7 @@ class Container:
         self.depth = depth
         self.fluid = fluid
         self.offset = fluid.original_positions
+        self.h = fluid.h
 
     @ti.func
     def is_within_bounds(self, position: ti.types.vector(3, ti.f32)) -> ti.i32:

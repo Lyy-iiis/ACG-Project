@@ -1,5 +1,10 @@
 # Update Log
 
+## 24.10.24 13:00 LYY
+
+- Finish WCSPH, including pressure force, viscosity force, gravity force, now the fluid can be simulated correctly.
+- TODO: container boundary condition, surface tension.
+
 ## 24.10.24 10:00 LYY
 
 - Prepare the basic feature for SPH.

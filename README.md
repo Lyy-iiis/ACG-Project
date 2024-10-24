@@ -8,8 +8,8 @@ ACG-Project
 |   |   |   # Material for the project
 |   │   render 
 |   |   |   # Render the scene
-|   │   surface.py
-|   |   |   # Surface reconstruction
+|   │   visualize
+|   |   |   # File for visualization
 |   assets # obj files
 |   main.py
 |   UPDATE_LOG.md
