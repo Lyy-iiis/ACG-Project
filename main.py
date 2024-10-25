@@ -6,6 +6,7 @@ from src.material import rigid, fluid, cloth, utils, container
 from src.visualize import visualizer
 import src.render.utils
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 import numpy as np
 import os
 
@@ -13,7 +14,7 @@ object_name = 'bunny'
 device = ti.gpu # Set to ti.cpu when debugging
 output_dir = 'output'
 Dt = 3e-5
-Frame = 200
+Frame = 120
 demo = True
 substeps = int(1 / 60 // Dt)
 
@@ -48,26 +49,28 @@ def test_rigid():
     video.create_video(output_dir, 'output.mp4')
     
 def test_fluid():
-    Renderer = render.Render()
+    Renderer = render.Render() # Don't remove this line even if it is not used
+    
     print("Starting main function")
     
     # mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
-    box_size = [0.4, 0.4, 0.4]
+    box_size = [0.6, 0.6, 0.6]
     mesh = src.material.geometry.Box(box_size, [0.0, 0.0, 0.0])
     print("Mesh loaded successfully")
     
-    Fluid = fluid.Fluid(mesh, position=np.array([0,0,-4]))
+    Fluid = fluid.Fluid(mesh, position=np.array([0,0,-6]))
     print("Fluid created successfully")
     
-    Container = container.Container(0.6, 0.3, 0.6, Fluid)
+    Container = container.Container(0.6, 1.0, 0.6, Fluid)
     print("Container created successfully")
     
     for i in range(Frame):
         print(f"Frame {i}")
         if not os.path.exists(f'{output_dir}/{i}'):
             os.makedirs(f'{output_dir}/{i}')
-        Fluid.step()
-        Container.enforce_domain_boundary()
+        for _ in tqdm(range(int(1 / (Fluid.fps * Fluid.time_step)))):
+            Fluid.step()
+            Container.enforce_domain_boundary()
         Fluid.positions_to_ply(f'{output_dir}/{i}/output.ply')
     
     print("Visualizing the fluid") 

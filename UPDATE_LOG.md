@@ -1,5 +1,12 @@
 # Update Log
 
+## 24.10.25 16:00 LYY
+
+- Finish surface tension, now the fluid can be simulated more realistically.
+- Render long term fluid simulation result correctly.
+- More beautiful rendering effect.
+- TODO: fluid render speed up.
+
 ## 24.10.24 20:00 LYY
 
 - Finish container boundary condition, now fluid move correctly.

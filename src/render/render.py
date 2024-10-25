@@ -24,6 +24,29 @@ class Render:
 
         # Set background color
         bpy.context.scene.world.use_nodes = True
+        world = bpy.context.scene.world
+        node_tree = world.node_tree
+        nodes = node_tree.nodes
+        links = node_tree.links
+
+        # Clear default nodes
+        for node in nodes:
+            nodes.remove(node)
+
+        # Add Background node
+        bg_node = nodes.new(type='ShaderNodeBackground')
+        bg_node.inputs['Color'].default_value = bg_color
+
+        # Add Environment Texture node
+        env_texture_node = nodes.new(type='ShaderNodeTexEnvironment')
+        env_texture_node.image = bpy.data.images.load('assets/background.hdr')
+
+        # Add Output node
+        output_node = nodes.new(type='ShaderNodeOutputWorld')
+
+        # Link nodes
+        links.new(env_texture_node.outputs['Color'], bg_node.inputs['Color'])
+        links.new(bg_node.outputs['Background'], output_node.inputs['Surface'])
         bg_node = bpy.context.scene.world.node_tree.nodes['Background']
         bg_node.inputs['Color'].default_value = bg_color  # RGBA values for dark gray background
 
