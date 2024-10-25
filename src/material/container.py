@@ -82,11 +82,6 @@ class Container:
             for offset in ti.grouped(ti.ndrange((-2, 3), (-2, 3), (-2, 3))):
                 neighbor_idx = grid_idx + offset
                 if 0 <= neighbor_idx[0] < self.grid_x and 0 <= neighbor_idx[1] < self.grid_y and 0 <= neighbor_idx[2] < self.grid_z:
-                    # print(self.grid_num[neighbor_idx])
-                    # self.fluid.neighbour_num[p_i] += self.grid_num[neighbor_idx]
-                    # for j in range(self.grid_num[neighbor_idx]):
-                    #     p_j = self.grid[neighbor_idx,j]
-                    #     self.fluid.neighbour[p_i].append(p_j)
                     for j in range(self.grid_num[neighbor_idx]):
                         p_j = self.grid[neighbor_idx,j]
                         r_len = (self.fluid.positions[p_j] - self.fluid.positions[p_i]).norm()

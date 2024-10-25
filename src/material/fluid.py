@@ -143,20 +143,25 @@ class Fluid:
         for i in range(self.num_particles):
             self.velocities[i] = ti.Vector([0.0, 0.0, 0.0])
             self.densities[i] = self.rest_density
-
+    
+    @ti.func
+    def test(self):
+        for i in range(self.num_particles):
+            for j in range(self.num_particles):
+                in_neighbour = False
+                if self.kernel_func((self.positions[i] - self.positions[j]).norm()) > 1e-5:
+                    for k in range(self.neighbour_num[i]):
+                        if self.neighbour[i, k] == j:
+                            in_neighbour = True
+                            break
+                    assert in_neighbour, f"Particle {j} is not in the neighbour list of particle {i}"
+                    
     @ti.func
     def compute_densities_and_pressures(self):
         for i in range(self.num_particles):
             self.densities[i] = 0.0
             self.pressures[i] = 0.0
-            # for j in range(self.num_particles):
-            #     in_neighbour = False
-            #     if self.kernel_func((self.positions[i] - self.positions[j]).norm()) > 1e-5:
-            #         for k in range(self.neighbour_num[i]):
-            #             if self.neighbour[i, k] == j:
-            #                 in_neighbour = True
-            #                 break
-            #         assert in_neighbour, f"Particle {j} is not in the neighbour list of particle {i}"
+
             for k in range(self.neighbour_num[i]):
                 j = self.neighbour[i, k]
                 r = self.positions[i] - self.positions[j]
