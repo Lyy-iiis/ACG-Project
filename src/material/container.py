@@ -3,15 +3,31 @@ from src.material.fluid import *
 @ti.data_oriented
 class Container:
     def __init__(self, width, height, depth, fluid: Fluid):
-        self.domain_size = np.array([width, height, depth])
+        self.domain_size = ti.Vector([width, height, depth])
         self.fluid = fluid
         self.offset = fluid.original_positions
         self.h = fluid.h
         
-        # self.grid = ti.field(dtype=ti.i32)
-        # ti.root.dense(ti.ijk, (width, height, depth)).dynamic(ti.l, 1024).place(self.grid)
+        self.grid = ti.field(dtype=ti.i32)
+        self.grid_num = ti.field(dtype=ti.i32)
+        self.grid_x = int(width / fluid.grid_size_x) + 1
+        self.grid_y = int(height / fluid.grid_size_y) + 1
+        self.grid_z = int(depth / fluid.grid_size_z) + 1
+        self.grid_size_x = 2 * width / (self.grid_x - 1)
+        self.grid_size_y = 2 * height / (self.grid_y - 1)
+        self.grid_size_z = 2 * depth / (self.grid_z - 1)
+        
+        self.idx_to_grid = ti.Vector.field(3, dtype=ti.i32, shape=(fluid.num_particles,))
+        
+        ti.root.dense(ti.ijk, (self.grid_x, self.grid_y, self.grid_z)).dynamic(ti.l, 1024).place(self.grid)
+        ti.root.dense(ti.ijk, (self.grid_x, self.grid_y, self.grid_z)).place(self.grid_num)
+        self.update()
+        
+        print(self.grid_size_x, self.grid_size_y, self.grid_size_z)
+        print(self.grid.shape, self.grid_num.shape)
+        print("Container initialized successfully")
 
-    @ti.kernel
+    @ti.func
     def enforce_domain_boundary(self):
         # make sure the particles are inside the domain
         for p_i in range(self.fluid.num_particles):
@@ -34,10 +50,53 @@ class Container:
     def simulate_collisions(self, p_i, vec):
         c_f = 0.5
         self.fluid.velocities[p_i] -= (1.0 + c_f) * ti.math.dot(self.fluid.velocities[p_i],vec) * vec
+    
+    @ti.func
+    def empty_grid(self):
+        for x in range(self.grid_x):
+            for y in range(self.grid_y):
+                for z in range(self.grid_z):
+                    self.grid[x, y, z].deactivate()
+                    self.grid_num[x, y, z] = 0
 
-    # @ti.func
-    # def update_grid(self):
-    #     pass
-    #     for p_i in range(self.fluid.num_particles):
-    #         grid_pos = ti.cast(self.fluid.positions[p_i] / self.h, ti.i32)
-    #         self.grid[grid_pos] = p_i
+        for i in range(self.fluid.num_particles):
+            self.fluid.neighbour_num[i] = 0
+            self.fluid.neighbour[i].deactivate()
+
+    @ti.func
+    def update_grid(self):
+        for p_i in range(self.fluid.num_particles):
+            pos = self.fluid.positions[p_i] - self.offset + self.domain_size
+            x_id = int(pos[0] / self.grid_size_x)
+            y_id = int(pos[1] / self.grid_size_y)
+            z_id = int(pos[2] / self.grid_size_z)
+            self.grid[x_id, y_id, z_id].append(p_i)
+            self.grid_num[x_id, y_id, z_id] += 1
+            self.idx_to_grid[p_i] = ti.Vector([x_id, y_id, z_id])
+    
+    @ti.func
+    def update_neighbour(self):
+        for p_i in range(self.fluid.num_particles):
+            grid_idx = self.idx_to_grid[p_i]
+            
+            for offset in ti.grouped(ti.ndrange((-2, 3), (-2, 3), (-2, 3))):
+                neighbor_idx = grid_idx + offset
+                if 0 <= neighbor_idx[0] < self.grid_x and 0 <= neighbor_idx[1] < self.grid_y and 0 <= neighbor_idx[2] < self.grid_z:
+                    # print(self.grid_num[neighbor_idx])
+                    # self.fluid.neighbour_num[p_i] += self.grid_num[neighbor_idx]
+                    # for j in range(self.grid_num[neighbor_idx]):
+                    #     p_j = self.grid[neighbor_idx,j]
+                    #     self.fluid.neighbour[p_i].append(p_j)
+                    for j in range(self.grid_num[neighbor_idx]):
+                        p_j = self.grid[neighbor_idx,j]
+                        r_len = (self.fluid.positions[p_j] - self.fluid.positions[p_i]).norm()
+                        if r_len <= self.fluid.h:
+                            self.fluid.neighbour[p_i].append(p_j)
+                            self.fluid.neighbour_num[p_i] += 1
+    
+    @ti.kernel
+    def update(self):
+        self.empty_grid()
+        self.enforce_domain_boundary()
+        self.update_grid()
+        self.update_neighbour()

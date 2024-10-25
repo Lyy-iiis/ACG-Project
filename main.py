@@ -1,11 +1,10 @@
 import taichi as ti
 import src.material
 import src.material.geometry
-from src.render import render, video, multi_thread
+from src.render import render, multi_thread
 from src.material import rigid, fluid, cloth, utils, container
-from src.visualize import visualizer
+from src.visualize import visualizer, video
 import src.render.utils
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 import numpy as np
 import os
@@ -19,9 +18,7 @@ demo = True
 substeps = int(1 / 60 // Dt)
 
 def test_rigid():
-    
     Renderer = render.Render()
-    print("Starting main function")
     
     mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
     print("Mesh loaded successfully")
@@ -51,26 +48,21 @@ def test_rigid():
 def test_fluid():
     Renderer = render.Render() # Don't remove this line even if it is not used
     
-    print("Starting main function")
-    
     # mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
     box_size = [0.6, 0.6, 0.6]
     mesh = src.material.geometry.Box(box_size, [0.0, 0.0, 0.0])
     print("Mesh loaded successfully")
     
     Fluid = fluid.Fluid(mesh, position=np.array([0,0,-6]))
-    print("Fluid created successfully")
     
     Container = container.Container(0.6, 1.0, 0.6, Fluid)
-    print("Container created successfully")
-    
+    substeps = int(1 / (Fluid.fps * Fluid.time_step))
     for i in range(Frame):
-        print(f"Frame {i}")
         if not os.path.exists(f'{output_dir}/{i}'):
             os.makedirs(f'{output_dir}/{i}')
-        for _ in tqdm(range(int(1 / (Fluid.fps * Fluid.time_step)))):
+        for _ in tqdm(range(substeps), desc=f"Frame {i}, Avg pos {Fluid.avg_position.to_numpy()[1]:.2f}, Avg density {Fluid.avg_density.to_numpy():.2f}"):
             Fluid.step()
-            Container.enforce_domain_boundary()
+            Container.update()
         Fluid.positions_to_ply(f'{output_dir}/{i}/output.ply')
     
     print("Visualizing the fluid") 
@@ -84,7 +76,6 @@ def test_fluid():
 
 def test_cloth1():
     Renderer = render.Render()
-    print("Starting main function")
 
     mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
     print("Mesh loaded successfully")
@@ -95,8 +86,6 @@ def test_cloth1():
     print("Cloth created successfully")
     
     flat_positions = ti.Vector.field(3, dtype=ti.f32, shape=(Cloth.num_particles,))
-
-
 
     for i in range(100):
         Cloth.get_flat_positions(flat_positions)
@@ -129,7 +118,8 @@ def test_cloth1():
     
  
 def main():
-    ti.init(arch=device)
+    print("Starting main function")
+    ti.init(arch=device,device_memory_fraction=0.9,debug=True)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         

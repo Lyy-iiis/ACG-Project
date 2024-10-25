@@ -1,5 +1,9 @@
 # Update Log
 
+## 24.10.25 22:30 LYY
+
+- Implement position hash grid, now the fluid can be simulated more efficiently. From $O(n^2)$ to $O(n)$.
+
 ## 24.10.25 16:00 LYY
 
 - Finish surface tension, now the fluid can be simulated more realistically.

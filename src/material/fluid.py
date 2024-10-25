@@ -2,7 +2,6 @@ import taichi as ti
 import numpy as np
 from .utils import *
 import time
-import tqdm
 
 @ti.data_oriented
 class Fluid:
@@ -31,6 +30,11 @@ class Fluid:
         
         self.volume[None] = self.compute_volume()
         self.original_positions = ti.Vector(position)
+        
+        self.avg_position = ti.Vector.field(3, dtype=ti.f32, shape=())
+        self.avg_position[None] = self.original_positions
+        self.avg_density = ti.field(dtype=ti.f32, shape=())
+        self.avg_density[None] = rest_density
 
         self.grid_dict = {} # grid_num -> particle_num
         
@@ -72,6 +76,10 @@ class Fluid:
         self.densities = ti.field(dtype=ti.f32, shape=num_particles)
         self.pressures = ti.field(dtype=ti.f32, shape=num_particles)
         self.forces = ti.Vector.field(3, dtype=ti.f32, shape=num_particles)
+        
+        self.neighbour = ti.field(dtype=ti.i32)
+        ti.root.dense(ti.i, num_particles).dynamic(ti.j, 2048).place(self.neighbour)
+        self.neighbour_num = ti.field(dtype=ti.i32, shape=num_particles)
         
         num_particles = 0
         for pos in useful_grid:
@@ -136,29 +144,41 @@ class Fluid:
             self.velocities[i] = ti.Vector([0.0, 0.0, 0.0])
             self.densities[i] = self.rest_density
 
-    @ti.kernel
+    @ti.func
     def compute_densities_and_pressures(self):
-        total_density = 0.0
         for i in range(self.num_particles):
             self.densities[i] = 0.0
             self.pressures[i] = 0.0
-            for j in range(self.num_particles):
+            # for j in range(self.num_particles):
+            #     in_neighbour = False
+            #     if self.kernel_func((self.positions[i] - self.positions[j]).norm()) > 1e-5:
+            #         for k in range(self.neighbour_num[i]):
+            #             if self.neighbour[i, k] == j:
+            #                 in_neighbour = True
+            #                 break
+            #         assert in_neighbour, f"Particle {j} is not in the neighbour list of particle {i}"
+            for k in range(self.neighbour_num[i]):
+                j = self.neighbour[i, k]
                 r = self.positions[i] - self.positions[j]
                 r_len = r.norm()
                 self.densities[i] += self.kernel_func(r_len) * self.mass[j]
             self.densities[i] = ti.max(self.densities[i], self.rest_density)
             self.pressures[i] = self.stiffness * ((self.densities[i] / self.rest_density) ** 7 - 1)
-            total_density += self.densities[i]
-        print("average density: ", total_density / self.num_particles)
 
-    @ti.kernel
+        self.avg_density[None] = 0.0
+        for i in range(self.num_particles):
+            self.avg_density[None] += self.densities[i]
+        self.avg_density[None] /= self.num_particles
+
+    @ti.func
     def compute_forces(self):
         for i in range(self.num_particles):
             pressure_force = ti.Vector([0.0, 0.0, 0.0])
             viscosity_force = ti.Vector([0.0, 0.0, 0.0])
             surface_tension_force = ti.Vector([0.0, 0.0, 0.0])
 
-            for j in range(self.num_particles):
+            for k in range(self.neighbour_num[i]):
+                j = self.neighbour[i, k]
                 r = self.positions[i] - self.positions[j]
                 r_len = r.norm()
                 nabla_ij = self.kernel_grad(r)
@@ -174,15 +194,18 @@ class Fluid:
             self.forces[i] = pressure_force + viscosity_force + self.gravity[None] + surface_tension_force
             self.forces[i] *= self.mass[i]
             
-    @ti.kernel
+    @ti.func
     def update_particles(self):
-        x = ti.Vector([0.0, 0.0, 0.0])
         for i in range(self.num_particles):
             self.velocities[i] += self.forces[i] * self.time_step / self.mass[i]
             self.positions[i] += self.velocities[i] * self.time_step
-            x += self.positions[i]
-        print("average position: ", x / self.num_particles)
+        
+        self.avg_position[None] = ti.Vector([0.0, 0.0, 0.0])
+        for i in range(self.num_particles):
+            self.avg_position[None] += self.positions[i]
+        self.avg_position[None] /= self.num_particles        
 
+    @ti.kernel
     def step(self):
         self.compute_densities_and_pressures()
         self.compute_forces()
