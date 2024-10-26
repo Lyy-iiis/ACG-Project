@@ -20,8 +20,14 @@ ACG-Project
 ## Demo
 
 <figure align="center">
-  <img src="./examples/fluid.gif" alt="Fluid" width="96%">
+  <video src="./examples/fluid_small.mp4" alt="Fluid" width="96%" controls>
+  </video>
   <figcaption>Fluid Simulation</figcaption>
+</figure>
+<figure align="center">
+  <video src="./examples/fluid_large.mp4" alt="Fluid" width="96%" controls>
+  </video>
+  <figcaption>Large Scale Fluid Simulation</figcaption>
 </figure>
 
 ## Installation
