@@ -5,22 +5,8 @@ from tqdm import tqdm
 from src.material import utils
 from src.render import render
 import sys
-
-# @contextmanager
-# def suppress_output():
-#     with open(os.devnull, 'w') as devnull:
-#         old_stdout = sys.stdout
-#         old_stderr = sys.stderr
-#         try:
-#             sys.stdout = devnull
-#             sys.stderr = devnull
-#             yield
-#         finally:
-#             sys.stdout = old_stdout
-#             sys.stderr = old_stderr
             
-            
-def process_frame(Renderer, output_dir, i):
+def process_frame(Renderer: render.Render, output_dir, i):
     mesh = utils.get_rigid_from_mesh(f'{output_dir}/{i}/output.obj')
     Renderer.render_fluid_mesh(mesh, f'{output_dir}/{i}/output.png')
     

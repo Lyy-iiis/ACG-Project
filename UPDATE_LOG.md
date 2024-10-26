@@ -1,5 +1,10 @@
 # Update Log
 
+## 24.10.26 13:00 LYY
+
+- Speed up initialization of fluid particles.
+- Try longer term fluid simulation.
+
 ## 24.10.25 22:30 LYY
 
 - Implement position hash grid, now the fluid can be simulated more efficiently. From $O(n^2)$ to $O(n)$.

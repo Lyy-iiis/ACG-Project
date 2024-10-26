@@ -4,7 +4,7 @@ def Ball(radius = 1, center = [0,0,0], resolution = 100):
     return trimesh.creation.icosphere(radius = radius, center = center, subdivisions = 2)
 
 def Box(extents = [1,1,1], center = [0,0,0]):
-    return trimesh.creation.box(extents = extents, center = center)
+    return trimesh.creation.box(extents = extents, transform=trimesh.transformations.translation_matrix(center))
 
 def Cylinder(radius = 1, height = 1, center = [0,0,0], resolution = 100):
     return trimesh.creation.cylinder(radius = radius, height = height, center = center, resolution = resolution)

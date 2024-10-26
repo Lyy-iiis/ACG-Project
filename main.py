@@ -13,7 +13,7 @@ object_name = 'bunny'
 device = ti.gpu # Set to ti.cpu when debugging
 output_dir = 'output'
 Dt = 3e-5
-Frame = 120
+Frame = 300
 demo = True
 substeps = int(1 / 60 // Dt)
 
@@ -49,13 +49,14 @@ def test_fluid():
     Renderer = render.Render() # Don't remove this line even if it is not used
     
     # mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
-    box_size = [0.6, 0.6, 0.6]
-    mesh = src.material.geometry.Box(box_size, [0.0, 0.0, 0.0])
+    box_size = [0.6, 1.6, 0.4]
+    mesh = src.material.geometry.Box(extents=box_size, center=[0.5, 0.0, 0.0])
+    print(mesh.vertices)
     print("Mesh loaded successfully")
     
-    Fluid = fluid.Fluid(mesh, position=np.array([0,0,-6]))
-    
-    Container = container.Container(0.6, 1.0, 0.6, Fluid)
+    Fluid = fluid.Fluid(mesh, position=np.array([0.5,0,-6]))
+    Container = container.Container(1.2, 1, 0.3, Fluid)
+
     substeps = int(1 / (Fluid.fps * Fluid.time_step))
     for i in range(Frame):
         if not os.path.exists(f'{output_dir}/{i}'):

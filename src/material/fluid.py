@@ -5,7 +5,7 @@ import time
 
 @ti.data_oriented
 class Fluid:
-    def __init__(self, mesh, 
+    def __init__(self, mesh: trimesh.Trimesh, 
                  position=np.array([0.0, 0.0, 0.0]),
                  gravity=np.array([0.0, -9.8, 0.0]),
                  viscosity=10.0, rest_density=1000.0,
@@ -36,7 +36,7 @@ class Fluid:
         self.avg_density = ti.field(dtype=ti.f32, shape=())
         self.avg_density[None] = rest_density
 
-        self.grid_dict = {} # grid_num -> particle_num
+        # self.grid_dict = {} # grid_num -> particle_num
         
         self.init_pos()
         self.init_mass()
@@ -46,10 +46,12 @@ class Fluid:
     def init_pos(self):
         useful_grid = []
         self.grid_size = 0.01
-        grid_num = 0
+        # grid_num = 0
         num_particles = 0
         min_x, min_y, min_z = np.min(self.mesh.vertices, axis=0)
         max_x, max_y, max_z = np.max(self.mesh.vertices, axis=0)
+        print(f"min_x: {min_x}, min_y: {min_y}, min_z: {min_z}")
+        print(f"max_x: {max_x}, max_y: {max_y}, max_z: {max_z}")
         self.grid_x = int((max_x - min_x) / self.grid_size) + 1 # number of grids in x direction
         self.grid_y = int((max_y - min_y) / self.grid_size) + 1 # number of grids in y direction
         self.grid_z = int((max_z - min_z) / self.grid_size) + 1 # number of grids in z direction
@@ -59,16 +61,20 @@ class Fluid:
         self.grid_size_z = (max_z - min_z) / (self.grid_z - 1)
 
         time1 = time.time()
-        for x in np.linspace(min_x, max_x, self.grid_x):
-            for y in np.linspace(min_y, max_y, self.grid_y):
-                for z in np.linspace(min_z, max_z, self.grid_z):
-                    if self.mesh.contains(np.array([[x, y, z]])):
-                        useful_grid.append(np.array([x, y, z]))
-                        self.grid_dict[grid_num] = num_particles
-                        num_particles += 1
-                    grid_num += 1
+        
+        x_vals = np.linspace(min_x, max_x, self.grid_x)
+        y_vals = np.linspace(min_y, max_y, self.grid_y)
+        z_vals = np.linspace(min_z, max_z, self.grid_z)
+        print(f"Grid size: {self.grid_x} x {self.grid_y} x {self.grid_z}")
+        grid = np.array(np.meshgrid(x_vals, y_vals, z_vals, indexing='ij')).transpose(1,2,3,0).reshape(-1, 3)
+        useful_grid = self.mesh.contains(grid)
+        useful_grid = np.where(useful_grid)[0]
+        num_particles = len(useful_grid)
+        position = grid[useful_grid]
         time2 = time.time()
         print(f"Time taken to initialize particles: {time2 - time1}")
+        print(f"Number of particles: {num_particles}")
+
         self.num_particles = num_particles
         self.mass = ti.field(dtype=ti.f32, shape=num_particles)
         self.positions = ti.Vector.field(3, dtype=ti.f32, shape=num_particles)
@@ -77,15 +83,12 @@ class Fluid:
         self.pressures = ti.field(dtype=ti.f32, shape=num_particles)
         self.forces = ti.Vector.field(3, dtype=ti.f32, shape=num_particles)
         
+        self.positions.from_numpy(position)
+        
         self.neighbour = ti.field(dtype=ti.i32)
         ti.root.dense(ti.i, num_particles).dynamic(ti.j, 2048).place(self.neighbour)
         self.neighbour_num = ti.field(dtype=ti.i32, shape=num_particles)
         
-        num_particles = 0
-        for pos in useful_grid:
-            self.positions[num_particles] = pos
-            num_particles += 1
-        print(f"Number of particles: {num_particles}")
         
     def init_mass(self):
         for i in range(self.num_particles):

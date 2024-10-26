@@ -23,9 +23,7 @@ class Container:
         ti.root.dense(ti.ijk, (self.grid_x, self.grid_y, self.grid_z)).place(self.grid_num)
         self.update()
         
-        print(self.grid_size_x, self.grid_size_y, self.grid_size_z)
-        print(self.grid.shape, self.grid_num.shape)
-        print("Container initialized successfully")
+        print("Container initialized successfully", self.grid_num.shape)
 
     @ti.func
     def enforce_domain_boundary(self):
@@ -56,11 +54,11 @@ class Container:
         for x in range(self.grid_x):
             for y in range(self.grid_y):
                 for z in range(self.grid_z):
-                    self.grid[x, y, z].deactivate()
+                    self.grid[int(x), int(y), int(z)].deactivate()
                     self.grid_num[x, y, z] = 0
 
         for i in range(self.fluid.num_particles):
-            self.fluid.neighbour_num[i] = 0
+            self.fluid.neighbour_num[int(i)] = 0
             self.fluid.neighbour[i].deactivate()
 
     @ti.func
