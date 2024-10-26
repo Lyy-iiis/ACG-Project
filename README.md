@@ -19,16 +19,9 @@ ACG-Project
 
 ## Demo
 
-<figure align="center">
-  <video src="./examples/fluid_small.mp4" alt="Fluid" width="96%" controls>
-  </video>
-  <figcaption>Fluid Simulation</figcaption>
-</figure>
-<figure align="center">
-  <video src="./examples/fluid_large.mp4" alt="Fluid" width="96%" controls>
-  </video>
-  <figcaption>Large Scale Fluid Simulation</figcaption>
-</figure>
+https://github.com/user-attachments/assets/ca0cbeda-95f9-48c9-b504-afa252acb9d9
+
+https://github.com/user-attachments/assets/9519dccd-26f6-4435-9b1d-1b6c1aae6cd2
 
 https://github.com/Lyy-iiis/ACG-Project/blob/main/examples/fluid_large.mp4
 
