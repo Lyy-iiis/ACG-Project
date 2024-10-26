@@ -30,6 +30,8 @@ ACG-Project
   <figcaption>Large Scale Fluid Simulation</figcaption>
 </figure>
 
+https://github.com/Lyy-iiis/ACG-Project/blob/main/examples/fluid_large.mp4
+
 ## Installation
 
 1. Clone the repository
