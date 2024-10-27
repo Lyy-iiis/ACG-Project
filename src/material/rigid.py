@@ -12,7 +12,7 @@ class RigidBody:
                 velocity=np.array([0.0, 0.0, 0.0]), 
                 angular_velocity=np.array([0.0, 0.0, 0.0]),
                 collision_threshold=np.finfo(np.float32).tiny):
-        # self.mesh = mesh
+
         if type == 'Ball':
             mesh = Ball(radius, center, resolution)
         elif type == 'Box':
@@ -29,7 +29,8 @@ class RigidBody:
             mesh = Torus(inner_radius, outer_radius, center, resolution)
         elif mesh is None:
             raise ValueError("Please provide a mesh or a type of geometry")
-            
+        
+        self.mesh = mesh
         self.vertices = ti.Vector.field(3, dtype=ti.f32, shape=len(mesh.vertices))
         self.faces = ti.Vector.field(3, dtype=ti.i32, shape=len(mesh.faces))
         for i in range(len(mesh.vertices)):
@@ -38,6 +39,7 @@ class RigidBody:
             self.faces[i] = mesh.faces[i]
 
         self.mass, self.volume = mass, ti.field(ti.f32, shape=())
+        self.mass_center_offset = ti.Vector.field(3, dtype=ti.f32, shape=())
         self.centralize() # centralize the mesh
         self.inertia_tensor = self.inertia() # inertia tensor relative to the center of mass with respect to the canonical frame
 
@@ -64,16 +66,17 @@ class RigidBody:
         for i in range(self.faces.shape[0]):
             # print(self.faces[i][0])
             center = 0.25 * (self.vertices[self.faces[i][0]] + self.vertices[self.faces[i][1]] + self.vertices[self.faces[i][2]])
-            volume = ti.abs(ti.math.dot(self.vertices[self.faces[i][0]], ti.math.cross(self.vertices[self.faces[i][1]], self.vertices[self.faces[i][2]]))) / 6
+            volume = ti.math.dot(self.vertices[self.faces[i][0]], ti.math.cross(self.vertices[self.faces[i][1]], self.vertices[self.faces[i][2]])) / 6
             mesh_volume += volume
             temp += center * volume
         
-        self.volume[None] = mesh_volume
+        self.volume[None] = ti.abs(mesh_volume)
         return temp / mesh_volume
     
     @ti.kernel
     def centralize(self):
         center = self.mass_center()
+        self.mass_center_offset[None] = center
         for i in range(self.vertices.shape[0]):
             self.vertices[i] -= center
     
@@ -181,3 +184,22 @@ class RigidBody:
         self.angular_momentum[None] = inertia_tensor_now @ self.angular_velocity[None]
         torque = self.torque[None] - ti.math.cross(self.angular_velocity[None], self.angular_momentum[None])
         return inertia_tensor_now.inverse() @ torque
+    
+    def get_voxel(self):
+        mesh = trimesh.Trimesh(vertices=self.vertices.to_numpy(), faces=self.faces.to_numpy())
+        mesh.apply_transform(np.vstack((np.hstack((self.orientation.to_numpy(), self.position.to_numpy().reshape(-1, 1))), [0, 0, 0, 1])))
+        voxel = mesh.voxelized(pitch=0.01).fill()
+        self.num_particles = voxel.points.shape[0]
+        return voxel.points, mesh
+    
+    def get_states(self):
+        velocity = self.velocity.to_numpy()
+        position = self.position.to_numpy()
+        orientation = self.orientation.to_numpy()
+        angular_velocity = self.angular_velocity.to_numpy()
+        return {
+            'velocity': velocity,
+            'position': position,
+            'orientation': orientation,
+            'angular_velocity': angular_velocity
+        }

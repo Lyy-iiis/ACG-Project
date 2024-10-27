@@ -160,47 +160,30 @@ class Fluid:
                     assert in_neighbour, f"Particle {j} is not in the neighbour list of particle {i}"
                     
     @ti.func
-    def compute_densities_and_pressures(self):
-        for i in range(self.num_particles):
-            self.densities[i] = 0.0
-            self.pressures[i] = 0.0
-
-            for k in range(self.neighbour_num[i]):
-                j = self.neighbour[i, k]
-                r = self.positions[i] - self.positions[j]
-                r_len = r.norm()
-                self.densities[i] += self.kernel_func(r_len) * self.mass[j]
-            self.densities[i] = ti.max(self.densities[i], self.rest_density)
-            self.pressures[i] = self.stiffness * ((self.densities[i] / self.rest_density) ** 7 - 1)
-
-        self.avg_density[None] = 0.0
-        for i in range(self.num_particles):
-            self.avg_density[None] += self.densities[i]
-        self.avg_density[None] /= self.num_particles
+    def compute_densities_and_pressures(self, p_i, p_j):
+        r = self.positions[p_i] - self.positions[p_j]
+        r_len = r.norm()
+        self.densities[p_i] += self.kernel_func(r_len) * self.mass[p_j]
 
     @ti.func
-    def compute_forces(self):
-        for i in range(self.num_particles):
-            pressure_force = ti.Vector([0.0, 0.0, 0.0])
-            viscosity_force = ti.Vector([0.0, 0.0, 0.0])
-            surface_tension_force = ti.Vector([0.0, 0.0, 0.0])
-
-            for k in range(self.neighbour_num[i]):
-                j = self.neighbour[i, k]
-                r = self.positions[i] - self.positions[j]
-                r_len = r.norm()
-                nabla_ij = self.kernel_grad(r)
-                
-                pressure_force += -self.mass[j] * (self.pressures[i] / self.densities[i] ** 2 + self.pressures[j] / self.densities[j] ** 2) * nabla_ij
-                v_xy = ti.math.dot(self.velocities[i] - self.velocities[j], r)
-                m_ij = (self.mass[i] + self.mass[j]) / 2
-                viscosity_force += 2 * 5 * self.viscosity * m_ij / self.densities[j] / (r_len ** 2 + 0.01 * self.h ** 2) * v_xy * nabla_ij / self.rest_density
-                if r_len > self.particle_diameter:
-                    surface_tension_force += -self.surface_tension / self.densities[i] * self.densities[j] * r * self.kernel_func(r_len)
-                else:
-                    surface_tension_force += -self.surface_tension / self.densities[i] * self.densities[j] * r * self.kernel_func(self.particle_diameter)
-            self.forces[i] = pressure_force + viscosity_force + self.gravity[None] + surface_tension_force
-            self.forces[i] *= self.mass[i]
+    def compute_forces(self, i, j):
+        # pressure_force = ti.Vector([0.0, 0.0, 0.0])
+        # viscosity_force = ti.Vector([0.0, 0.0, 0.0])
+        # surface_tension_force = ti.Vector([0.0, 0.0, 0.0])
+        
+        r = self.positions[i] - self.positions[j]
+        r_len = r.norm()
+        nabla_ij = self.kernel_grad(r)
+        
+        pressure_force = -self.mass[j] * (self.pressures[i] / self.densities[i] ** 2 + self.pressures[j] / self.densities[j] ** 2) * nabla_ij
+        v_xy = ti.math.dot(self.velocities[i] - self.velocities[j], r)
+        m_ij = (self.mass[i] + self.mass[j]) / 2
+        viscosity_force = 2 * 5 * self.viscosity * m_ij / self.densities[j] / (r_len ** 2 + 0.01 * self.h ** 2) * v_xy * nabla_ij / self.rest_density
+        if r_len > self.particle_diameter:
+            surface_tension_force = -self.surface_tension / self.densities[i] * self.densities[j] * r * self.kernel_func(r_len)
+        else:
+            surface_tension_force = -self.surface_tension / self.densities[i] * self.densities[j] * r * self.kernel_func(self.particle_diameter)
+        self.forces[i] += pressure_force + viscosity_force + self.gravity[None] + surface_tension_force
             
     @ti.func
     def update_particles(self):
@@ -215,8 +198,8 @@ class Fluid:
 
     @ti.kernel
     def step(self):
-        self.compute_densities_and_pressures()
-        self.compute_forces()
+        # self.compute_densities_and_pressures()
+        # self.compute_forces()
         self.update_particles()
         
     def positions_to_ply(self, output_path):

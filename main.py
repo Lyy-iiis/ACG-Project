@@ -13,7 +13,7 @@ object_name = 'bunny'
 device = ti.gpu # Set to ti.cpu when debugging
 output_dir = 'output'
 Dt = 3e-5
-Frame = 300
+Frame = 10
 demo = True
 substeps = int(1 / 60 // Dt)
 
@@ -116,6 +116,26 @@ def test_cloth1():
 
     video.create_video(output_dir, 'output.mp4')
 
+def test_collision():
+    Renderer = render.Render()
+    
+    mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
+    print("Mesh loaded successfully")
+    
+    Rigid_1 = rigid.RigidBody(mesh=mesh, position=np.array([0,0,-4]))
+    force = ti.Vector([0.5,0.5,0.5]) # don't apply too big force !!!
+    mesh_1 = src.render.utils.trimesh_to_blender_object(
+            utils.mesh(Rigid_1.vertices, Rigid_1.faces), 
+            object_name=object_name)
+    
+    for i in range(Frame):
+        Rigid_1.apply_external_force(force, ti.Vector([0.0, 0.0, 0.0]))
+        Rigid_1.update(0.01)
+        mesh = Rigid_1.get_voxel()[1]
+        print(f"Frame {i}")
+        Renderer.render_fluid_mesh(mesh, f'{output_dir}/{i}/output.png')
+        
+    video.create_video(output_dir, 'output.mp4')
     
  
 def main():
@@ -127,6 +147,7 @@ def main():
     # test_rigid()
     test_fluid()
     # test_cloth1()
+    # test_collision()
     
 if __name__ == '__main__':
     main()
