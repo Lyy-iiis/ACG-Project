@@ -1,5 +1,10 @@
 # Update Log
 
+## 24.10.28 8:30 LYY
+
+- Move fluid neighbor update to container class, now the fluid simulation is more modular.
+- Initialize fluid and rigid coupling.
+
 ## 24.10.26 13:00 LYY
 
 - Speed up initialization of fluid particles.

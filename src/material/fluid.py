@@ -179,11 +179,12 @@ class Fluid:
         v_xy = ti.math.dot(self.velocities[i] - self.velocities[j], r)
         m_ij = (self.mass[i] + self.mass[j]) / 2
         viscosity_force = 2 * 5 * self.viscosity * m_ij / self.densities[j] / (r_len ** 2 + 0.01 * self.h ** 2) * v_xy * nabla_ij / self.rest_density
+        surface_tension_force = ti.Vector([0.0, 0.0, 0.0])
         if r_len > self.particle_diameter:
             surface_tension_force = -self.surface_tension / self.densities[i] * self.densities[j] * r * self.kernel_func(r_len)
         else:
             surface_tension_force = -self.surface_tension / self.densities[i] * self.densities[j] * r * self.kernel_func(self.particle_diameter)
-        self.forces[i] += pressure_force + viscosity_force + self.gravity[None] + surface_tension_force
+        self.forces[i] += pressure_force + viscosity_force + surface_tension_force
             
     @ti.func
     def update_particles(self):
@@ -196,11 +197,11 @@ class Fluid:
             self.avg_position[None] += self.positions[i]
         self.avg_position[None] /= self.num_particles        
 
-    @ti.kernel
-    def step(self):
-        # self.compute_densities_and_pressures()
-        # self.compute_forces()
-        self.update_particles()
+    # @ti.kernel
+    # def step(self):
+    #     self.compute_densities_and_pressures()
+    #     self.compute_forces()
+    #     self.update_particles()
         
     def positions_to_ply(self, output_path):
         positions = self.positions.to_numpy()

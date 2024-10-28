@@ -9,7 +9,7 @@ class Container:
         self.rigid = rigid
         self.offset = fluid.original_positions
         self.h = fluid.h
-        self.max_num_particles = 1e6
+        self.max_num_particles = self.fluid.num_particles
         
         self.grid = ti.field(dtype=ti.i32)
         self.grid_num = ti.field(dtype=ti.i32)
@@ -24,12 +24,11 @@ class Container:
         
         ti.root.dense(ti.ijk, (self.grid_x, self.grid_y, self.grid_z)).dynamic(ti.l, 1024).place(self.grid)
         ti.root.dense(ti.ijk, (self.grid_x, self.grid_y, self.grid_z)).place(self.grid_num)
-        self.update()
         
         self.neighbour = ti.field(dtype=ti.i32)
         ti.root.dense(ti.i, self.max_num_particles).dynamic(ti.j, 2048).place(self.neighbour)
         self.neighbour_num = ti.field(dtype=ti.i32, shape=self.max_num_particles)
-        
+        # self.update()
         print("Container initialized successfully", self.grid_num.shape)
 
     @ti.func
@@ -66,16 +65,19 @@ class Container:
 
         for i in range(self.fluid.num_particles):
             self.neighbour_num[int(i)] = 0
-            self.neighbour[i].deactivate()
+            self.neighbour[int(i)].deactivate()
             
         # for i in range(self.rigid.num_particles+self.fluid.num_particles):
         #     self.neighbour_num[int(i)] = 0
         #     self.neighbour[i].deactivate()
+    
+    def get_rigid_pos(self):
+        self.rigid_positions_np = self.rigid.get_voxel()[0]
+        self.rigid_positions = ti.Vector.field(3, dtype=ti.f32, shape=self.rigid_positions_np.shape[0])
+        self.rigid_positions.from_numpy(self.rigid_positions_np)
 
     @ti.func
-    def update_grid(self):
-        self.rigid_positions = self.rigid.get_voxel()[0]
-        
+    def update_grid(self):        
         for p_i in range(self.fluid.num_particles):
             pos = self.fluid.positions[p_i] - self.offset + self.domain_size
             x_id = int(pos[0] / self.grid_size_x)
@@ -128,24 +130,25 @@ class Container:
         #                     self.fluid.neighbour[p_i].append(p_j)
         #                     self.fluid.neighbour_num[p_i] += 1
     
-    @ti.func
-    def compute_for_neighbour(self, p_i, task: ti.template()):
-        for j in range(self.neighbour_num[p_i]):
-            p_j = self.neighbour[p_i,j]
-            task(p_i, p_j)
+    # @ti.func
+    # def compute_for_neighbour(self, p_i, task: ti.template()):
+    #     for j in range(self.neighbour_num[p_i]):
+    #         p_j = self.neighbour[p_i,j]
+    #         task(p_i, p_j)
     
     @ti.func
     def compute_densities_and_pressures(self):
         for i in range(self.fluid.num_particles):
             self.fluid.densities[i] = 0.0
             self.fluid.pressures[i] = 0.0
-            self.compute_for_neighbour(i, self.fluid.compute_densities_and_pressures)
-            
+            for j in range(self.neighbour_num[i]):
+                p_j = self.neighbour[i,j]
+                self.fluid.compute_densities_and_pressures(i, p_j)            
             self.fluid.densities[i] = ti.max(self.fluid.densities[i], self.fluid.rest_density)
             self.fluid.pressures[i] = self.fluid.stiffness * ((self.fluid.densities[i] / self.fluid.rest_density) ** 7 - 1)
 
         self.fluid.avg_density[None] = 0.0
-        for i in range(self.num_particles):
+        for i in range(self.fluid.num_particles):
             self.fluid.avg_density[None] += self.fluid.densities[i]
         self.fluid.avg_density[None] /= self.fluid.num_particles
         
@@ -153,14 +156,19 @@ class Container:
     def compute_forces(self):
         for i in range(self.fluid.num_particles):
             self.fluid.forces[i] = ti.Vector([0.0, 0.0, 0.0])
-            self.compute_for_neighbour(i, self.fluid.compute_forces)
+            for j in range(self.neighbour_num[i]):
+                p_j = self.neighbour[i,j]
+                self.fluid.compute_forces(i, p_j)
+            self.fluid.forces[i] += self.fluid.gravity[None]
             self.fluid.forces[i] *= self.fluid.mass[i]
     
     @ti.kernel
     def update(self):
         self.empty_grid()
         self.enforce_domain_boundary()
+        # self.get_rigid_pos()
         self.update_grid()
         self.update_neighbour()
         self.compute_densities_and_pressures()
         self.compute_forces()
+        self.fluid.update_particles()
