@@ -9,7 +9,7 @@ class Fluid:
                  position=np.array([0.0, 0.0, 0.0]),
                  gravity=np.array([0.0, -9.8, 0.0]),
                  viscosity=10.0, rest_density=1000.0,
-                 time_step=5e-4, fps=60):
+                 time_step=1e-3, fps=60):
         # self.num_particles = num_particles
         self.gravity = ti.Vector.field(3, dtype=ti.f32, shape=())
         self.gravity[None] = gravity
@@ -66,7 +66,7 @@ class Fluid:
         y_vals = np.linspace(min_y, max_y, self.grid_y)
         z_vals = np.linspace(min_z, max_z, self.grid_z)
         print(f"Grid size: {self.grid_x} x {self.grid_y} x {self.grid_z}")
-        grid = np.array(np.meshgrid(x_vals, y_vals, z_vals, indexing='ij')).transpose(1,2,3,0).reshape(-1, 3)
+        grid = np.array(np.meshgrid(x_vals, y_vals, z_vals, indexing='ij')).astype(np.float32).transpose(1,2,3,0).reshape(-1, 3)
         useful_grid = self.mesh.contains(grid)
         useful_grid = np.where(useful_grid)[0]
         num_particles = len(useful_grid)

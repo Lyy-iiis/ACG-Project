@@ -9,7 +9,9 @@ class Container:
         self.rigid = rigid
         self.offset = fluid.original_positions
         self.h = fluid.h
-        self.max_num_particles = self.fluid.num_particles
+        self.rigid.get_voxel()
+        self.max_num_particles = int(self.fluid.num_particles + self.rigid.num_particles + 1e3)
+        print("Max number of particles", self.max_num_particles)
         
         self.grid = ti.field(dtype=ti.i32)
         self.grid_num = ti.field(dtype=ti.i32)
@@ -28,6 +30,7 @@ class Container:
         self.neighbour = ti.field(dtype=ti.i32)
         ti.root.dense(ti.i, self.max_num_particles).dynamic(ti.j, 2048).place(self.neighbour)
         self.neighbour_num = ti.field(dtype=ti.i32, shape=self.max_num_particles)
+        self.is_fluid = ti.field(dtype=ti.i32, shape=self.max_num_particles)
         # self.update()
         print("Container initialized successfully", self.grid_num.shape)
 
@@ -63,21 +66,22 @@ class Container:
                     self.grid[int(x), int(y), int(z)].deactivate()
                     self.grid_num[x, y, z] = 0
 
-        for i in range(self.fluid.num_particles):
+        for i in range(self.max_num_particles):
             self.neighbour_num[int(i)] = 0
             self.neighbour[int(i)].deactivate()
-            
-        # for i in range(self.rigid.num_particles+self.fluid.num_particles):
-        #     self.neighbour_num[int(i)] = 0
-        #     self.neighbour[i].deactivate()
+        
+        for i in range(self.fluid.num_particles):
+            self.is_fluid[i] = 1
+        for i in range(self.rigid.num_particles):
+            self.is_fluid[i+self.fluid.num_particles] = 0
     
     def get_rigid_pos(self):
-        self.rigid_positions_np = self.rigid.get_voxel()[0]
+        self.rigid_positions_np = self.rigid.get_voxel()[0].astype(np.float32)
         self.rigid_positions = ti.Vector.field(3, dtype=ti.f32, shape=self.rigid_positions_np.shape[0])
         self.rigid_positions.from_numpy(self.rigid_positions_np)
 
     @ti.func
-    def update_grid(self):        
+    def update_grid(self):
         for p_i in range(self.fluid.num_particles):
             pos = self.fluid.positions[p_i] - self.offset + self.domain_size
             x_id = int(pos[0] / self.grid_size_x)
@@ -87,14 +91,14 @@ class Container:
             self.grid_num[x_id, y_id, z_id] += 1
             self.idx_to_grid[p_i] = ti.Vector([x_id, y_id, z_id])
         
-        # for p_i in range(self.rigid.num_particles):
-        #     pos = self.rigid_positions[p_i] - self.offset + self.domain_size
-        #     x_id = int(pos[0] / self.grid_size_x)
-        #     y_id = int(pos[1] / self.grid_size_y)
-        #     z_id = int(pos[2] / self.grid_size_z)
-        #     self.grid[x_id, y_id, z_id].append(p_i+self.fluid.num_particles)
-        #     self.grid_num[x_id, y_id, z_id] += 1
-        #     self.idx_to_grid[p_i+self.fluid.num_particles] = ti.Vector([x_id, y_id, z_id])
+        for p_i in range(self.rigid.num_particles):
+            pos = self.rigid_positions[p_i] - self.offset + self.domain_size
+            x_id = int(pos[0] / self.grid_size_x)
+            y_id = int(pos[1] / self.grid_size_y)
+            z_id = int(pos[2] / self.grid_size_z)
+            self.grid[x_id, y_id, z_id].append(p_i+self.fluid.num_particles)
+            self.grid_num[x_id, y_id, z_id] += 1
+            self.idx_to_grid[p_i+self.fluid.num_particles] = ti.Vector([x_id, y_id, z_id])
     
     @ti.func
     def update_neighbour(self):
@@ -106,29 +110,37 @@ class Container:
                 if 0 <= neighbor_idx[0] < self.grid_x and 0 <= neighbor_idx[1] < self.grid_y and 0 <= neighbor_idx[2] < self.grid_z:
                     for j in range(self.grid_num[neighbor_idx]):
                         p_j = self.grid[neighbor_idx,j]
-                        r_len = (self.fluid.positions[p_j] - self.fluid.positions[p_i]).norm()
+                        r_len = 0.0
+                        if p_j < self.fluid.num_particles:
+                            r_len = (self.fluid.positions[p_j] - self.fluid.positions[p_i]).norm()
+                        elif p_j < self.fluid.num_particles+self.rigid.num_particles:
+                            r_len = (self.rigid_positions[p_j - self.fluid.num_particles] - self.fluid.positions[p_i]).norm()
+                        else:
+                            assert False
+                            
                         if r_len <= self.fluid.h:
                             self.neighbour[p_i].append(p_j)
                             self.neighbour_num[p_i] += 1
         
-        # for p_i in range(self.rigid.num_particles):
-        #     grid_idx = self.idx_to_grid[p_i+self.fluid.num_particles]
+        for p_i in range(self.rigid.num_particles):
+            grid_idx = self.idx_to_grid[p_i+self.fluid.num_particles]
             
-        #     for offset in ti.grouped(ti.ndrange((-2, 3), (-2, 3), (-2, 3))):
-        #         neighbor_idx = grid_idx + offset
-        #         if 0 <= neighbor_idx[0] < self.grid_x and 0 <= neighbor_idx[1] < self.grid_y and 0 <= neighbor_idx[2] < self.grid_z:
-        #             for j in range(self.grid_num[neighbor_idx+self.fluid.num_particles]):
-        #                 p_j = self.grid[neighbor_idx,j]
-        #                 if p_j < self.fluid.num_particles:
-        #                     r_len = (self.fluid.positions[p_j] - self.rigid_positions[p_i]).norm()
-        #                 elif p_j < self.fluid.num_particles+self.rigid.num_particles:
-        #                     r_len = (self.rigid_positions[p_j-self.fluid.num_particles] - self.rigid_positions[p_i]).norm()
-        #                 else:
-        #                     assert False
+            for offset in ti.grouped(ti.ndrange((-2, 3), (-2, 3), (-2, 3))):
+                neighbor_idx = grid_idx + offset
+                if 0 <= neighbor_idx[0] < self.grid_x and 0 <= neighbor_idx[1] < self.grid_y and 0 <= neighbor_idx[2] < self.grid_z:
+                    for j in range(self.grid_num[neighbor_idx]):
+                        p_j = self.grid[neighbor_idx,j]
+                        r_len = 0.0
+                        if p_j < self.fluid.num_particles:
+                            r_len = (self.fluid.positions[p_j] - self.rigid_positions[p_i]).norm()
+                        elif p_j < self.fluid.num_particles+self.rigid.num_particles:
+                            r_len = (self.rigid_positions[p_j-self.fluid.num_particles] - self.rigid_positions[p_i]).norm()
+                        else:
+                            assert False
                         
-        #                 if r_len <= self.fluid.h:
-        #                     self.fluid.neighbour[p_i].append(p_j)
-        #                     self.fluid.neighbour_num[p_i] += 1
+                        if r_len <= self.fluid.h:
+                            self.neighbour[p_i+self.fluid.num_particles].append(p_j)
+                            self.neighbour_num[p_i+self.fluid.num_particles] += 1
     
     # @ti.func
     # def compute_for_neighbour(self, p_i, task: ti.template()):
@@ -143,7 +155,9 @@ class Container:
             self.fluid.pressures[i] = 0.0
             for j in range(self.neighbour_num[i]):
                 p_j = self.neighbour[i,j]
-                self.fluid.compute_densities_and_pressures(i, p_j)            
+                if p_j < self.fluid.num_particles:
+                    self.fluid.compute_densities_and_pressures(i, p_j)
+                # self.fluid.compute_densities_and_pressures(i, p_j)            
             self.fluid.densities[i] = ti.max(self.fluid.densities[i], self.fluid.rest_density)
             self.fluid.pressures[i] = self.fluid.stiffness * ((self.fluid.densities[i] / self.fluid.rest_density) ** 7 - 1)
 
@@ -158,7 +172,9 @@ class Container:
             self.fluid.forces[i] = ti.Vector([0.0, 0.0, 0.0])
             for j in range(self.neighbour_num[i]):
                 p_j = self.neighbour[i,j]
-                self.fluid.compute_forces(i, p_j)
+                if p_j < self.fluid.num_particles:
+                    self.fluid.compute_forces(i, p_j)
+                # self.fluid.compute_forces(i, p_j)
             self.fluid.forces[i] += self.fluid.gravity[None]
             self.fluid.forces[i] *= self.fluid.mass[i]
     
@@ -172,3 +188,8 @@ class Container:
         self.compute_densities_and_pressures()
         self.compute_forces()
         self.fluid.update_particles()
+        
+    def step(self):
+        self.get_rigid_pos()
+        self.update()
+        # self.fluid.test()

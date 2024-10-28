@@ -52,6 +52,7 @@ class RigidBody:
         self.angular_velocity = ti.Vector.field(3, dtype=ti.f32, shape=()) # angular velocity of the body
         self.angular_velocity[None] = angular_velocity
         self.collision_threshold = collision_threshold
+        self.num_particles = 0
         
         self.force = ti.Vector.field(3, dtype=ti.f32, shape=())
         self.torque = ti.Vector.field(3, dtype=ti.f32, shape=()) # torque relative to the center of mass

@@ -13,7 +13,7 @@ object_name = 'bunny'
 device = ti.gpu # Set to ti.cpu when debugging
 output_dir = 'output'
 Dt = 3e-5
-Frame = 100
+Frame = 20
 demo = True
 substeps = int(1 / 60 // Dt)
 
@@ -120,15 +120,16 @@ def test_cloth1():
 def test_collision():    
     Renderer = render.Render() # Don't remove this line even if it is not used
     
-    # mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
-    box_size = [0.6, 1.6, 0.4]
+    mesh1 = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
+    # box_size = [0.6, 1.6, 0.4]
+    box_size = [0.4, 0.4, 0.4]
     mesh = src.material.geometry.Box(extents=box_size, center=[0.0, 0.0, 0.0])
     print(mesh.vertices)
     print("Mesh loaded successfully")
     
-    Rigid = rigid.RigidBody(mesh=mesh, position=np.array([0,0,-4]))
-    Fluid = fluid.Fluid(mesh, position=np.array([0.5,0,-6]))
-    Container = container.Container(1.2, 1, 0.3, Fluid, Rigid)
+    Rigid = rigid.RigidBody(mesh=mesh1, position=np.array([0,0,-6]))
+    Fluid = fluid.Fluid(mesh, position=np.array([0,0,-6]))
+    Container = container.Container(1.0, 1.0, 0.8, Fluid, Rigid)
 
     substeps = int(1 / (Fluid.fps * Fluid.time_step))
     for i in range(Frame):
@@ -136,6 +137,7 @@ def test_collision():
             os.makedirs(f'{output_dir}/{i}')
         for _ in tqdm(range(substeps), desc=f"Frame {i}, Avg pos {Fluid.avg_position.to_numpy()[1]:.2f}, Avg density {Fluid.avg_density.to_numpy():.2f}"):
             # Fluid.step()
+            Container.get_rigid_pos()
             Container.update()
         Fluid.positions_to_ply(f'{output_dir}/{i}/output.ply')
     
