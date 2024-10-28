@@ -21,5 +21,5 @@ def visualize_ply(file_path):
 
 def visualize(output_dir, frame):
     for i in tqdm.tqdm(range(frame)):
-        file_path = f"{output_dir}/{i}/output.ply"
+        file_path = f"{output_dir}/{i}/fluid.ply"
         visualize_ply(file_path)

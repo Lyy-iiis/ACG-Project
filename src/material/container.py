@@ -1,5 +1,6 @@
 from src.material.fluid import *
 from src.material.rigid import *
+import os
 
 @ti.data_oriented
 class Container:
@@ -10,7 +11,7 @@ class Container:
         self.offset = fluid.original_positions
         self.h = fluid.h
         self.rigid.get_voxel()
-        self.max_num_particles = int(self.fluid.num_particles + self.rigid.num_particles + 1e3)
+        self.max_num_particles = int(self.fluid.num_particles + self.rigid.num_particles)
         print("Max number of particles", self.max_num_particles)
         
         self.grid = ti.field(dtype=ti.i32)
@@ -30,8 +31,17 @@ class Container:
         self.neighbour = ti.field(dtype=ti.i32)
         ti.root.dense(ti.i, self.max_num_particles).dynamic(ti.j, 2048).place(self.neighbour)
         self.neighbour_num = ti.field(dtype=ti.i32, shape=self.max_num_particles)
+        
+        self.rigid_positions = ti.Vector.field(3, dtype=ti.f32, shape=int(self.rigid.num_particles))
+        self.rigid_velocities = ti.Vector.field(3, dtype=ti.f32, shape=int(self.rigid.num_particles))
+        self.rigid_volumes = ti.field(dtype=ti.f32, shape=int(self.rigid.num_particles))
+        self.rigid_masses = ti.field(dtype=ti.f32, shape=int(self.rigid.num_particles))
         self.is_fluid = ti.field(dtype=ti.i32, shape=self.max_num_particles)
         # self.update()
+        
+        min_x, min_y, min_z = self.domain_size + self.offset
+        max_x, max_y, max_z = - self.domain_size + self.offset
+        print("Boundary: ", min_x, min_y, min_z, max_x, max_y, max_z)
         print("Container initialized successfully", self.grid_num.shape)
 
     @ti.func
@@ -76,10 +86,20 @@ class Container:
             self.is_fluid[i+self.fluid.num_particles] = 0
     
     def get_rigid_pos(self):
-        self.rigid_positions_np = self.rigid.get_voxel()[0].astype(np.float32)
-        self.rigid_positions = ti.Vector.field(3, dtype=ti.f32, shape=self.rigid_positions_np.shape[0])
+        state = self.rigid.get_states()
+        voxel = self.rigid.voxel
+        self.rigid_positions_np = np.zeros((self.rigid.num_particles, 3), dtype=np.float32)
+        transform = np.vstack((np.hstack((state["orientation"], state["position"].reshape(-1, 1))), [0, 0, 0, 1]))
+        pos = transform @ np.hstack((voxel, np.ones((self.rigid.num_particles, 1)))).T
+        self.rigid_positions_np = pos[:3].T
+        self.rigid_velocities_np = state["velocity"] + np.cross(state["angular_velocity"], pos[:3].T - state["position"])
+        # max_x, max_y, max_z = np.max(self.rigid_positions_np, axis=0)
+        # min_x, min_y, min_z = np.min(self.rigid_positions_np, axis=0)
+        # print(f"Rigid max_x: {max_x}, max_y: {max_y}, max_z: {max_z}")
+        # print(f"Rigid min_x: {min_x}, min_y: {min_y}, min_z: {min_z}")
         self.rigid_positions.from_numpy(self.rigid_positions_np)
-
+        self.rigid_velocities.from_numpy(self.rigid_velocities_np)
+        
     @ti.func
     def update_grid(self):
         for p_i in range(self.fluid.num_particles):
@@ -111,17 +131,16 @@ class Container:
                     for j in range(self.grid_num[neighbor_idx]):
                         p_j = self.grid[neighbor_idx,j]
                         r_len = 0.0
-                        if p_j < self.fluid.num_particles:
+                        if self.is_fluid[p_j]:
                             r_len = (self.fluid.positions[p_j] - self.fluid.positions[p_i]).norm()
-                        elif p_j < self.fluid.num_particles+self.rigid.num_particles:
-                            r_len = (self.rigid_positions[p_j - self.fluid.num_particles] - self.fluid.positions[p_i]).norm()
                         else:
-                            assert False
+                            r_len = (self.rigid_positions[p_j - self.fluid.num_particles] - self.fluid.positions[p_i]).norm()
                             
                         if r_len <= self.fluid.h:
                             self.neighbour[p_i].append(p_j)
                             self.neighbour_num[p_i] += 1
-        
+                            # print(self.is_fluid[p_j])
+                            
         for p_i in range(self.rigid.num_particles):
             grid_idx = self.idx_to_grid[p_i+self.fluid.num_particles]
             
@@ -131,22 +150,35 @@ class Container:
                     for j in range(self.grid_num[neighbor_idx]):
                         p_j = self.grid[neighbor_idx,j]
                         r_len = 0.0
-                        if p_j < self.fluid.num_particles:
+                        if self.is_fluid[p_j]:
                             r_len = (self.fluid.positions[p_j] - self.rigid_positions[p_i]).norm()
-                        elif p_j < self.fluid.num_particles+self.rigid.num_particles:
-                            r_len = (self.rigid_positions[p_j-self.fluid.num_particles] - self.rigid_positions[p_i]).norm()
                         else:
-                            assert False
-                        
+                            r_len = (self.rigid_positions[p_j - self.fluid.num_particles] - self.rigid_positions[p_i]).norm()
+
                         if r_len <= self.fluid.h:
                             self.neighbour[p_i+self.fluid.num_particles].append(p_j)
                             self.neighbour_num[p_i+self.fluid.num_particles] += 1
-    
-    # @ti.func
-    # def compute_for_neighbour(self, p_i, task: ti.template()):
-    #     for j in range(self.neighbour_num[p_i]):
-    #         p_j = self.neighbour[p_i,j]
-    #         task(p_i, p_j)
+      
+    @ti.func
+    def update_rigid_particle_volume(self):
+        for i in range(self.rigid.num_particles):
+            pos_i = self.rigid_positions[i]
+            self.rigid_volumes[i] = 0.0
+            for j in range(self.neighbour_num[i+self.fluid.num_particles]):
+                p_j = self.neighbour[i+self.fluid.num_particles,j]
+                if not self.is_fluid[p_j]:
+                    pos_j = self.rigid_positions[p_j-self.fluid.num_particles]
+                    R = pos_i - pos_j
+                    R_mod = R.norm()
+                    self.rigid_volumes[i] += self.fluid.kernel_func(R_mod)
+            self.rigid_volumes[i] = 1.0 / self.rigid_volumes[i]
+            self.rigid_masses[i] = self.rigid_volumes[i] * self.fluid.rest_density
+        
+        avg_volume = 0.0
+        for i in range(self.rigid.num_particles):
+            avg_volume += self.rigid_volumes[i]
+        avg_volume /= self.rigid.num_particles
+            
     
     @ti.func
     def compute_densities_and_pressures(self):
@@ -155,9 +187,15 @@ class Container:
             self.fluid.pressures[i] = 0.0
             for j in range(self.neighbour_num[i]):
                 p_j = self.neighbour[i,j]
-                if p_j < self.fluid.num_particles:
+                if self.is_fluid[p_j]:
                     self.fluid.compute_densities_and_pressures(i, p_j)
-                # self.fluid.compute_densities_and_pressures(i, p_j)            
+                else:
+                    pos_i = self.fluid.positions[i]
+                    pos_j = self.rigid_positions[p_j-self.fluid.num_particles]
+                    R = pos_i - pos_j
+                    R_mod = R.norm()
+                    self.fluid.densities[i] += self.fluid.kernel_func(R_mod) * self.rigid_masses[p_j-self.fluid.num_particles]
+                    
             self.fluid.densities[i] = ti.max(self.fluid.densities[i], self.fluid.rest_density)
             self.fluid.pressures[i] = self.fluid.stiffness * ((self.fluid.densities[i] / self.fluid.rest_density) ** 7 - 1)
 
@@ -165,6 +203,23 @@ class Container:
         for i in range(self.fluid.num_particles):
             self.fluid.avg_density[None] += self.fluid.densities[i]
         self.fluid.avg_density[None] /= self.fluid.num_particles
+    
+    @ti.func
+    def compute_forces_rigid(self, i, p_j):
+        m_ij = self.rigid_masses[p_j-self.fluid.num_particles]
+        v_xy = self.fluid.velocities[i] - self.rigid_velocities[p_j-self.fluid.num_particles]
+        R = self.fluid.positions[i] - self.rigid_positions[p_j-self.fluid.num_particles]
+        v_xy = ti.math.dot(v_xy, R)
+        nabla_ij = self.fluid.kernel_grad(R)
+        
+        viscosity_force = 2 * 5 * self.fluid.viscosity * m_ij / self.fluid.densities[i] / (R.norm() ** 2 + 0.01 * self.fluid.h ** 2) * v_xy * nabla_ij / self.fluid.rest_density
+        pressure_force = - m_ij * self.fluid.pressures[i] / (self.fluid.densities[i] ** 2) * nabla_ij
+        force = pressure_force + viscosity_force
+        self.fluid.forces[i] += force
+        
+        force_j = - force * self.fluid.mass[i] / self.rigid_masses[p_j-self.fluid.num_particles]
+        pos_j = self.rigid_positions[p_j-self.fluid.num_particles]
+        self.rigid.apply_internal_force(force_j, pos_j)
         
     @ti.func
     def compute_forces(self):
@@ -174,22 +229,32 @@ class Container:
                 p_j = self.neighbour[i,j]
                 if p_j < self.fluid.num_particles:
                     self.fluid.compute_forces(i, p_j)
-                # self.fluid.compute_forces(i, p_j)
+                else:
+                    self.compute_forces_rigid(i, p_j)
+                    
             self.fluid.forces[i] += self.fluid.gravity[None]
             self.fluid.forces[i] *= self.fluid.mass[i]
+        
+        # self.rigid.force[None] += self.rigid.mass * self.fluid.gravity[None]
     
     @ti.kernel
     def update(self):
         self.empty_grid()
-        self.enforce_domain_boundary()
-        # self.get_rigid_pos()
         self.update_grid()
         self.update_neighbour()
+        self.update_rigid_particle_volume()
         self.compute_densities_and_pressures()
         self.compute_forces()
         self.fluid.update_particles()
+        self.enforce_domain_boundary()
         
     def step(self):
         self.get_rigid_pos()
         self.update()
-        # self.fluid.test()
+        # self.rigid.update(self.fluid.time_step)
+        
+    def positions_to_ply(self, path):
+        self.fluid.positions_to_ply(os.path.join(path, "fluid.ply"))
+        rigid_positions = self.rigid_positions_np
+        write_ply(rigid_positions, os.path.join(path, "rigid.ply"))
+        # self.rigid.positions_to_ply(path)

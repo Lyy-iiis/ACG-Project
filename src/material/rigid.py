@@ -1,6 +1,7 @@
 import taichi as ti
 import numpy as np
 from src.material.geometry import *
+import time
 
 @ti.data_oriented
 class RigidBody:
@@ -37,12 +38,13 @@ class RigidBody:
             self.vertices[i] = mesh.vertices[i]
         for i in range(len(mesh.faces)):
             self.faces[i] = mesh.faces[i]
-
         self.mass, self.volume = mass, ti.field(ti.f32, shape=())
         self.mass_center_offset = ti.Vector.field(3, dtype=ti.f32, shape=())
         self.centralize() # centralize the mesh
         self.inertia_tensor = self.inertia() # inertia tensor relative to the center of mass with respect to the canonical frame
-
+        self.mesh = trimesh.Trimesh(vertices=self.vertices.to_numpy(), faces=self.faces.to_numpy())
+        self.voxel = None
+        self.get_voxel()
         self.position = ti.Vector.field(3, dtype=ti.f32, shape=()) # position of the center of mass
         self.position[None] = position
         self.velocity = ti.Vector.field(3, dtype=ti.f32, shape=()) # velocity of the center of mass
@@ -80,6 +82,12 @@ class RigidBody:
         self.mass_center_offset[None] = center
         for i in range(self.vertices.shape[0]):
             self.vertices[i] -= center
+    
+    def get_voxel(self):
+        mesh = self.mesh.copy()
+        # mesh.apply_transform(np.vstack((np.hstack((self.orientation.to_numpy(), self.position.to_numpy().reshape(-1, 1))), [0, 0, 0, 1])))
+        self.voxel = mesh.voxelized(pitch=0.01).fill().points.astype(np.float32)
+        self.num_particles = self.voxel.shape[0]
     
     @ti.kernel
     def inertia(self) -> ti.types.matrix(3, 3, ti.f32):
@@ -185,13 +193,6 @@ class RigidBody:
         self.angular_momentum[None] = inertia_tensor_now @ self.angular_velocity[None]
         torque = self.torque[None] - ti.math.cross(self.angular_velocity[None], self.angular_momentum[None])
         return inertia_tensor_now.inverse() @ torque
-    
-    def get_voxel(self):
-        mesh = trimesh.Trimesh(vertices=self.vertices.to_numpy(), faces=self.faces.to_numpy())
-        mesh.apply_transform(np.vstack((np.hstack((self.orientation.to_numpy(), self.position.to_numpy().reshape(-1, 1))), [0, 0, 0, 1])))
-        voxel = mesh.voxelized(pitch=0.01).fill()
-        self.num_particles = voxel.points.shape[0]
-        return voxel.points, mesh
     
     def get_states(self):
         velocity = self.velocity.to_numpy()

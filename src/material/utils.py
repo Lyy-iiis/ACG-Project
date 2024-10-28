@@ -33,7 +33,7 @@ def write_ply(position, file):
         f.write('property float z\n')
         f.write('end_header\n')
         for pos in position:
-            f.write(f'{pos[0]} {pos[1]} {pos[2]}\n')
+            f.write(f'{pos[0]:.6f} {pos[1]:.6f} {pos[2]:.6f}\n')
 # @ti.func
 # def sample_points(vertices, faces, num_points):
 #     volume = []

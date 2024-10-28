@@ -101,6 +101,15 @@ class Render:
         mesh = utils.trimesh_to_blender_object(mesh, object_name="Fluid")
         self.render_mesh([mesh], output_path)
         
+    def render_coupled_fluid_rigid(self, fluid_mesh, rigid_mesh, output_path):
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in bpy.data.objects:
+            if obj.type == 'MESH':
+                obj.select_set(True)
+        bpy.ops.object.delete()
+        fluid_mesh = utils.trimesh_to_blender_object(fluid_mesh, object_name="Fluid")
+        rigid_mesh = utils.trimesh_to_blender_object(rigid_mesh, object_name="Rigid")
+        self.render_mesh([fluid_mesh, rigid_mesh], output_path)
         
     def add_container(self, container: container.Container):
         assert False, "Not implemented"

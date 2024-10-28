@@ -1,5 +1,9 @@
 # Update Log
 
+## 24.10.28 21:00 LYY
+
+- Implement fluid-rigid coupling.
+
 ## 24.10.28 8:30 LYY
 
 - Move fluid neighbor update to container class, now the fluid simulation is more modular.

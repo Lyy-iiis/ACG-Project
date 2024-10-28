@@ -13,7 +13,7 @@ object_name = 'bunny'
 device = ti.gpu # Set to ti.cpu when debugging
 output_dir = 'output'
 Dt = 3e-5
-Frame = 20
+Frame = 100
 demo = True
 substeps = int(1 / 60 // Dt)
 
@@ -35,13 +35,15 @@ def test_rigid():
             utils.mesh(Rigid_2.vertices, Rigid_2.faces), 
             object_name="Ball")
     
-    for i in range(100):
+    for i in range(Frame):
+        if not os.path.exists(f'{output_dir}/{i}'):
+            os.makedirs(f'{output_dir}/{i}')
         Rigid_1.apply_external_force(force, ti.Vector([0.0, 0.0, 0.0]))
         Rigid_2.apply_external_force(-force, ti.Vector([0.0, 0.0, 0.0]))
         Rigid_1.update(0.01)
         Rigid_2.update(0.01)
         print(f"Frame {i}")
-        Renderer.render_rigid_body([mesh_1,mesh_2], [Rigid_1,Rigid_2], f'{output_dir}/output.png')
+        Renderer.render_rigid_body([mesh_1,mesh_2], [Rigid_1,Rigid_2], f'{output_dir}/{i}/output.png')
         
     video.create_video(output_dir, 'output.mp4')
     
@@ -121,15 +123,13 @@ def test_collision():
     Renderer = render.Render() # Don't remove this line even if it is not used
     
     mesh1 = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
-    # box_size = [0.6, 1.6, 0.4]
-    box_size = [0.4, 0.4, 0.4]
+    box_size = [1.0, 0.8, 0.4]
     mesh = src.material.geometry.Box(extents=box_size, center=[0.0, 0.0, 0.0])
-    print(mesh.vertices)
     print("Mesh loaded successfully")
     
-    Rigid = rigid.RigidBody(mesh=mesh1, position=np.array([0,0,-6]))
-    Fluid = fluid.Fluid(mesh, position=np.array([0,0,-6]))
-    Container = container.Container(1.0, 1.0, 0.8, Fluid, Rigid)
+    Rigid = rigid.RigidBody(mesh=mesh1, position=np.array([0.5,-0.5,-6]))
+    Fluid = fluid.Fluid(mesh, position=np.array([0,0.6,-6]))
+    Container = container.Container(1.2, 1.5, 0.5, Fluid, Rigid)
 
     substeps = int(1 / (Fluid.fps * Fluid.time_step))
     for i in range(Frame):
@@ -137,20 +137,18 @@ def test_collision():
             os.makedirs(f'{output_dir}/{i}')
         for _ in tqdm(range(substeps), desc=f"Frame {i}, Avg pos {Fluid.avg_position.to_numpy()[1]:.2f}, Avg density {Fluid.avg_density.to_numpy():.2f}"):
             # Fluid.step()
-            Container.get_rigid_pos()
-            Container.update()
-        Fluid.positions_to_ply(f'{output_dir}/{i}/output.ply')
+            Container.step()
+        Container.positions_to_ply(f'{output_dir}/{i}')
     
     print("Visualizing the fluid") 
     if demo:
         os.system(f"python3 src/visualize/surface.py --input_dir {output_dir}")
-        multi_thread.process(output_dir, Frame)
+        multi_thread.process(output_dir, Frame, is_coupled=True)
     else:
         visualizer.visualize(output_dir, Frame)
             
     video.create_video(output_dir, 'output.mp4')
     
- 
 def main():
     print("Starting main function")
     ti.init(arch=device,device_memory_fraction=0.9,debug=True)

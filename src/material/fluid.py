@@ -9,7 +9,7 @@ class Fluid:
                  position=np.array([0.0, 0.0, 0.0]),
                  gravity=np.array([0.0, -9.8, 0.0]),
                  viscosity=10.0, rest_density=1000.0,
-                 time_step=1e-3, fps=60):
+                 time_step=5e-4, fps=60):
         # self.num_particles = num_particles
         self.gravity = ti.Vector.field(3, dtype=ti.f32, shape=())
         self.gravity[None] = gravity
@@ -175,7 +175,9 @@ class Fluid:
         r_len = r.norm()
         nabla_ij = self.kernel_grad(r)
         
-        pressure_force = -self.mass[j] * (self.pressures[i] / self.densities[i] ** 2 + self.pressures[j] / self.densities[j] ** 2) * nabla_ij
+        pressure_force = ti.Vector([0.0, 0.0, 0.0])
+        if i != j:
+            pressure_force = -self.mass[j] * (self.pressures[i] / self.densities[i] ** 2 + self.pressures[j] / self.densities[j] ** 2) * nabla_ij
         v_xy = ti.math.dot(self.velocities[i] - self.velocities[j], r)
         m_ij = (self.mass[i] + self.mass[j]) / 2
         viscosity_force = 2 * 5 * self.viscosity * m_ij / self.densities[j] / (r_len ** 2 + 0.01 * self.h ** 2) * v_xy * nabla_ij / self.rest_density
