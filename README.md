@@ -1,5 +1,3 @@
-
-https://github.com/user-attachments/assets/b2441ed0-ea09-4d3b-81ab-9590f24e97ca
 # ACG-Project
 
 ## Code Structure
