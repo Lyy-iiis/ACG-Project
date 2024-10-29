@@ -13,7 +13,7 @@ object_name = 'bunny'
 device = ti.gpu # Set to ti.cpu when debugging
 output_dir = 'output'
 Dt = 3e-5
-Frame = 1
+Frame = 300
 demo = True
 substeps = int(1 / 60 // Dt)
 
@@ -122,27 +122,30 @@ def test_cloth1():
 def test_coupling():    
     Renderer = render.Render() # Don't remove this line even if it is not used
     
-    # mesh1 = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
-    # box_size = [1.0, 0.8, 0.4]
-    # mesh = src.material.geometry.Box(extents=box_size, center=[0.0, 0.0, 0.0])
-    # print("Mesh loaded successfully")
+    mesh1 = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
+    box_size = [1.2, 0.8, 0.5]
+    # box_size = [0.4, 0.4, 0.4]
+    mesh = src.material.geometry.Box(extents=box_size, center=[0.0, 0.0, 0.0])
+    print("Mesh loaded successfully")
     
-    # Rigid = rigid.RigidBody(mesh=mesh1, position=np.array([0.5,-0.5,-6]))
-    # Fluid = fluid.Fluid(mesh, position=np.array([0,0.6,-6]))
-    # Container = container.Container(1.2, 1.5, 0.5, Fluid, Rigid)
+    Rigid = rigid.RigidBody(mesh=mesh1, position=np.array([0.5,-0.5,-5]))
+    Fluid = fluid.Fluid(mesh, position=np.array([0,0.55,-5]))
+    Container = container.Container(1.2, 1.5, 0.5, Fluid, Rigid)
 
-    # substeps = int(1 / (Fluid.fps * Fluid.time_step))
-    # for i in range(Frame):
-    #     if not os.path.exists(f'{output_dir}/{i}'):
-    #         os.makedirs(f'{output_dir}/{i}')
-    #     for _ in tqdm(range(substeps), desc=f"Frame {i}, Avg pos {Fluid.avg_position.to_numpy()[1]:.2f}, Avg density {Fluid.avg_density.to_numpy():.2f}"):
-    #         # Fluid.step()
-    #         Container.step()
-    #     Container.positions_to_ply(f'{output_dir}/{i}')
+    substeps = int(1 / (Fluid.fps * Fluid.time_step))
+    for i in range(Frame):
+        if not os.path.exists(f'{output_dir}/{i}'):
+            os.makedirs(f'{output_dir}/{i}')
+        for _ in tqdm(range(substeps), desc=f"Frame {i}, Avg pos {Fluid.avg_position.to_numpy()[1]:.2f}, Avg density {Fluid.avg_density.to_numpy():.2f}"):
+            # Fluid.step()
+            Container.step()
+        if i == 0:
+            Container.save_mesh(f'{output_dir}/{i}/container.obj')
+        Container.positions_to_ply(f'{output_dir}/{i}')
     
     print("Visualizing the fluid") 
     if demo:
-        # os.system(f"python3 src/visualize/surface.py --input_dir {output_dir}")
+        os.system(f"python3 src/visualize/surface.py --input_dir {output_dir}")
         multi_thread.process(output_dir, Frame, is_coupled=True)
     else:
         visualizer.visualize(output_dir, Frame)
@@ -151,7 +154,7 @@ def test_coupling():
     
 def main():
     print("Starting main function")
-    ti.init(arch=device,device_memory_fraction=0.9,debug=True)
+    ti.init(arch=device,device_memory_fraction=0.95,debug=True)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         

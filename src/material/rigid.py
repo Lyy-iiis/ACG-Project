@@ -32,6 +32,7 @@ class RigidBody:
             raise ValueError("Please provide a mesh or a type of geometry")
         
         self.mesh = mesh
+        mesh.vertices = mesh.vertices.astype(np.float32)
         self.vertices = ti.Vector.field(3, dtype=ti.f32, shape=len(mesh.vertices))
         self.faces = ti.Vector.field(3, dtype=ti.i32, shape=len(mesh.faces))
         for i in range(len(mesh.vertices)):
@@ -44,6 +45,7 @@ class RigidBody:
         self.inertia_tensor = self.inertia() # inertia tensor relative to the center of mass with respect to the canonical frame
         self.mesh = trimesh.Trimesh(vertices=self.vertices.to_numpy(), faces=self.faces.to_numpy())
         self.voxel = None
+        self.num_particles = 0
         self.get_voxel()
         self.position = ti.Vector.field(3, dtype=ti.f32, shape=()) # position of the center of mass
         self.position[None] = position
@@ -54,7 +56,6 @@ class RigidBody:
         self.angular_velocity = ti.Vector.field(3, dtype=ti.f32, shape=()) # angular velocity of the body
         self.angular_velocity[None] = angular_velocity
         self.collision_threshold = collision_threshold
-        self.num_particles = 0
         
         self.force = ti.Vector.field(3, dtype=ti.f32, shape=())
         self.torque = ti.Vector.field(3, dtype=ti.f32, shape=()) # torque relative to the center of mass

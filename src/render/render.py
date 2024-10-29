@@ -1,4 +1,4 @@
-import bpy
+import bpy, mathutils
 
 from src.material import rigid, fluid, cloth, container
 import trimesh
@@ -9,19 +9,23 @@ import taichi as ti
 import numpy as np
 
 class Render:
-    def __init__(self, camera_location=(0,0,0), 
-                camera_rotation=(0,0,0),
-                bg_color=(0,0,0,1), 
-                light_location=(5,-5,5), 
-                light_energy=1000):
+    def __init__(self, camera_location=(0, 0, 0), 
+                camera_rotation=(0, 0, 0),
+                bg_color=(0, 0, 0, 1), 
+                light_location=(0, 5, -6), 
+                light_energy=2000):
         bpy.ops.object.select_all(action='SELECT')
         bpy.ops.object.delete()
         
         # Create a new camera, with default location and rotation
+        # direction = mathutils.Vector((0, 0, -6)) - camera.location
+        # rot_quat = direction.to_track_quat('Z', 'Y')
+        # rotation_euler = rot_quat.to_euler()
         bpy.ops.object.camera_add(location=camera_location, rotation=camera_rotation)
         camera = bpy.context.object
+        # self.look_at(camera, mathutils.Vector((0, 0, -6)))
         bpy.context.scene.camera = camera
-
+        
         # Set background color
         bpy.context.scene.world.use_nodes = True
         world = bpy.context.scene.world
@@ -56,6 +60,16 @@ class Render:
         light.data.energy = light_energy
         
         self.fluid_mesh = []
+        
+    def look_at(self, obj_camera, point):
+        loc_camera = obj_camera.matrix_world.to_translation()
+
+        direction = point - loc_camera
+        # point the cameras '-Z' and use its 'Y' as up
+        rot_quat = direction.to_track_quat('-Z', 'Y')
+
+        # assume we're using euler rotation
+        obj_camera.rotation_euler = rot_quat.to_euler()
         
     def render_mesh(self, mesh_list:list, output_path):    
         # Set the mesh as the active object
@@ -101,66 +115,40 @@ class Render:
         mesh = utils.trimesh_to_blender_object(mesh, object_name="Fluid")
         self.render_mesh([mesh], output_path)
         
-    def render_coupled_fluid_rigid(self, fluid_mesh, rigid_mesh, output_path):
+    def render_coupled_fluid_rigid(self, fluid_mesh, rigid_mesh, container_mesh, output_path):
         bpy.ops.object.select_all(action='DESELECT')
         for obj in bpy.data.objects:
             if obj.type == 'MESH':
                 obj.select_set(True)
         bpy.ops.object.delete()
-        # fluid_mesh = utils.trimesh_to_blender_object(fluid_mesh, object_name="Fluid")
-        # rigid_mesh = utils.trimesh_to_blender_object(rigid_mesh, object_name="Rigid")
+
+        fluid_material = self.get_material("Water", "assets/water.blend")
         
-        # Set color for the fluid mesh
-        # fluid_material = bpy.data.materials.new(name="FluidMaterial")
-        # fluid_material.use_nodes = True
-        # fluid_bsdf = fluid_material.node_tree.nodes["Principled BSDF"]
-        # fluid_bsdf.inputs['Base Color'].default_value = (0, 0, 1, 1)  # Blue color
-
         fluid_mesh = utils.trimesh_to_blender_object(fluid_mesh, object_name="Fluid")
-        # if fluid_mesh.data.materials:
-        #     fluid_mesh.data.materials[0] = fluid_material
-        # else:
-        #     fluid_mesh.data.materials.append(fluid_material)
+        if fluid_mesh.data.materials:
+            fluid_mesh.data.materials[0] = fluid_material
+        else:
+            fluid_mesh.data.materials.append(fluid_material)
 
-        # Set color for the rigid mesh
-        # rigid_material = bpy.data.materials.new(name="RigidMaterial")
-        # rigid_material.use_nodes = True
-        # rigid_bsdf = rigid_material.node_tree.nodes["Principled BSDF"]
-        # rigid_bsdf.inputs['Base Color'].default_value = (1, 0, 0, 1)  # Red color
-
+        rigid_material = self.get_material('Realistic procedural gold', 'assets/rigid.blend')
         rigid_mesh = utils.trimesh_to_blender_object(rigid_mesh, object_name="Rigid")
-        # if rigid_mesh.data.materials:
-        #     rigid_mesh.data.materials[0] = rigid_material
-        # else:
-        #     rigid_mesh.data.materials.append(rigid_material)
-            
+        if rigid_mesh.data.materials:
+            rigid_mesh.data.materials[0] = rigid_material
+        else:
+            rigid_mesh.data.materials.append(rigid_material)
+        
+        # container_mesh = self.add_container(container_mesh)
         self.render_mesh([fluid_mesh, rigid_mesh], output_path)
         
-    def add_container(self, container: container.Container):
-        assert False, "Not implemented"
-        glass_material = bpy.data.materials.new(name="GlassMaterial")
-        glass_material.use_nodes = True
-        bsdf = glass_material.node_tree.nodes["Principled BSDF"]
-        # bsdf.inputs['Base Color'].default_value = (1, 1, 1, 1)
-        bsdf.inputs["Transmission"].default_value = 1
-        bsdf.inputs['Roughness'].default_value = 0
-        bsdf.inputs['IOR'].default_value = 1
+    def add_container(self, container_mesh):
+        glass_material = self.get_material("Scratched Glass (Procedural)", "assets/glass.blend")
         
-        # Create a mesh for the container
-        bpy.ops.mesh.primitive_cube_add(size=2, location=container.offset.to_numpy())
-        container_mesh = bpy.context.object
-        container_mesh.scale = (container.width, container.height, container.depth)
-        
-        # Assign the glass material to the container mesh
+        container_mesh = utils.trimesh_to_blender_object(container_mesh, object_name="Container")
         if container_mesh.data.materials:
             container_mesh.data.materials[0] = glass_material
         else:
             container_mesh.data.materials.append(glass_material)
-        
-        # Set the container mesh as a rigid body with passive type
-        bpy.ops.rigidbody.object_add()
-        container_mesh.rigid_body.type = 'PASSIVE'
-        container_mesh.rigid_body.collision_shape = 'MESH'
+        return container_mesh
 
     def render_cloth1(self, mesh: bpy.types.Object, output_path):
         # # Render the current frame with the cloth mesh
@@ -189,3 +177,16 @@ class Render:
         
         # Render the current frame to the given file path
         bpy.ops.render.render(write_still=True)
+        
+    def get_material(self, material_name, file_name):
+        # Load the .blend file
+        blend_file_path = file_name
+        with bpy.data.libraries.load(blend_file_path, link=False) as (data_from, data_to):
+            # print(data_from.materials)
+            if material_name in data_from.materials:
+                data_to.materials = [material_name]
+            else:
+                raise ValueError(f"Material {material_name} not found in {blend_file_path}")
+
+        # Return the material
+        return data_to.materials[0]

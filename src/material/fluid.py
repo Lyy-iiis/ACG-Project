@@ -67,6 +67,7 @@ class Fluid:
         z_vals = np.linspace(min_z, max_z, self.grid_z)
         print(f"Grid size: {self.grid_x} x {self.grid_y} x {self.grid_z}")
         grid = np.array(np.meshgrid(x_vals, y_vals, z_vals, indexing='ij')).astype(np.float32).transpose(1,2,3,0).reshape(-1, 3)
+        
         useful_grid = self.mesh.contains(grid)
         useful_grid = np.where(useful_grid)[0]
         num_particles = len(useful_grid)

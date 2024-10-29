@@ -1,16 +1,14 @@
 from src.material.fluid import *
 from src.material.rigid import *
 import os
+from src.material.geometry import *
 
 @ti.data_oriented
 class Container:
-    def __init__(self, width, height, depth, fluid: Fluid, rigid: RigidBody = None):
+    def __init__(self, width, height, depth, fluid: Fluid, rigid: RigidBody):
         self.domain_size = ti.Vector([width, height, depth])
         self.fluid = fluid
-        if rigid is None:
-            self.rigid = rigid
-        else:
-            self.rigid = RigidBody(type='Box', size=[0.001, 0.001],mass=0.0)
+        self.rigid = rigid
         self.offset = fluid.original_positions
         self.h = fluid.h
         self.max_num_particles = self.fluid.num_particles
@@ -35,11 +33,10 @@ class Container:
         ti.root.dense(ti.i, self.max_num_particles).dynamic(ti.j, 2048).place(self.neighbour)
         self.neighbour_num = ti.field(dtype=ti.i32, shape=self.max_num_particles)
         
-        if rigid is not None:
-            self.rigid_positions = ti.Vector.field(3, dtype=ti.f32, shape=int(self.rigid.num_particles))
-            self.rigid_velocities = ti.Vector.field(3, dtype=ti.f32, shape=int(self.rigid.num_particles))
-            self.rigid_volumes = ti.field(dtype=ti.f32, shape=int(self.rigid.num_particles))
-            self.rigid_masses = ti.field(dtype=ti.f32, shape=int(self.rigid.num_particles))
+        self.rigid_positions = ti.Vector.field(3, dtype=ti.f32, shape=int(self.rigid.num_particles))
+        self.rigid_velocities = ti.Vector.field(3, dtype=ti.f32, shape=int(self.rigid.num_particles))
+        self.rigid_volumes = ti.field(dtype=ti.f32, shape=int(self.rigid.num_particles))
+        self.rigid_masses = ti.field(dtype=ti.f32, shape=int(self.rigid.num_particles))
         self.is_fluid = ti.field(dtype=ti.i32, shape=self.max_num_particles)
         # self.update()
         
@@ -262,3 +259,18 @@ class Container:
         rigid_positions = self.rigid_positions_np
         write_ply(rigid_positions, os.path.join(path, "rigid.ply"))
         # self.rigid.positions_to_ply(path)
+    
+    def save_mesh(self, path):
+        # Create a mesh for the container itself
+        min_x, min_y, min_z = self.domain_size + self.offset
+        max_x, max_y, max_z = - self.domain_size + self.offset
+        self.domain_size *= 2
+        plane1 = trimesh.creation.box(extents=[self.domain_size[0], self.domain_size[1], 0.0001], transform=trimesh.transformations.translation_matrix([0.0, 0.0, min_z]))
+        plane2 = trimesh.creation.box(extents=[self.domain_size[0], self.domain_size[1], 0.0001], transform=trimesh.transformations.translation_matrix([0.0, 0.0, max_z]))
+        plane3 = trimesh.creation.box(extents=[self.domain_size[0], 0.0001, self.domain_size[2]], transform=trimesh.transformations.translation_matrix([0.0, min_y, 0.0]))
+        plane4 = trimesh.creation.box(extents=[self.domain_size[0], 0.0001, self.domain_size[2]], transform=trimesh.transformations.translation_matrix([0.0, max_y, 0.0]))
+        plane5 = trimesh.creation.box(extents=[0.0001, self.domain_size[1], self.domain_size[2]], transform=trimesh.transformations.translation_matrix([min_x, 0.0, 0.0]))
+        plane6 = trimesh.creation.box(extents=[0.0001, self.domain_size[1], self.domain_size[2]], transform=trimesh.transformations.translation_matrix([max_x, 0.0, 0.0]))
+        container_mesh = trimesh.util.concatenate([plane1, plane2, plane3, plane4, plane5, plane6])
+        self.domain_size /= 2
+        container_mesh.export(path)

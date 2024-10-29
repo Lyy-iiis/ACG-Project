@@ -1,5 +1,9 @@
 # Update Log
 
+## 24.10.29 16:30 LYY
+
+- Take large effort to make render scene more beautiful, now the rendering effect is more realistic.
+
 ## 24.10.28 21:00 LYY
 
 - Implement fluid-rigid coupling.

@@ -44,33 +44,6 @@ def trimesh_to_blender_object(trimesh_obj, object_name="Bunny"):
     
     # Disable backface culling to enable rendering on both sides
     mat.use_backface_culling = False  
-    
-    # # Ensure that the object uses nodes for more advanced material control
-    # mat.use_nodes = True
-    # nodes = mat.node_tree.nodes
-
-    # # Add a Geometry node to control the normal direction
-    # if "Geometry" not in nodes:
-    #     geometry_node = nodes.new(type="ShaderNodeNewGeometry")
-    # else:
-    #     geometry_node = nodes["Geometry"]
-
-    # # Use a Mix Shader to mix front and back normals
-    # if "Mix Shader" not in nodes:
-    #     mix_shader = nodes.new(type="ShaderNodeMixShader")
-    # else:
-    #     mix_shader = nodes["Mix Shader"]
-
-    # # Link nodes for correct double-sided rendering
-    # if "Principled BSDF" in nodes:
-    #     bsdf = nodes["Principled BSDF"]
-    # else:
-    #     bsdf = nodes.new(type="ShaderNodeBsdfPrincipled")
-
-    # # Ensure correct node links for double-sided rendering
-    # mat.node_tree.links.new(geometry_node.outputs['Backfacing'], mix_shader.inputs[0])
-    # mat.node_tree.links.new(bsdf.outputs['BSDF'], mix_shader.inputs[1])
-    # mat.node_tree.links.new(bsdf.outputs['BSDF'], mix_shader.inputs[2])
 
     mesh_info = {
         "name": obj.name,
