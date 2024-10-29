@@ -107,8 +107,33 @@ class Render:
             if obj.type == 'MESH':
                 obj.select_set(True)
         bpy.ops.object.delete()
+        # fluid_mesh = utils.trimesh_to_blender_object(fluid_mesh, object_name="Fluid")
+        # rigid_mesh = utils.trimesh_to_blender_object(rigid_mesh, object_name="Rigid")
+        
+        # Set color for the fluid mesh
+        # fluid_material = bpy.data.materials.new(name="FluidMaterial")
+        # fluid_material.use_nodes = True
+        # fluid_bsdf = fluid_material.node_tree.nodes["Principled BSDF"]
+        # fluid_bsdf.inputs['Base Color'].default_value = (0, 0, 1, 1)  # Blue color
+
         fluid_mesh = utils.trimesh_to_blender_object(fluid_mesh, object_name="Fluid")
+        # if fluid_mesh.data.materials:
+        #     fluid_mesh.data.materials[0] = fluid_material
+        # else:
+        #     fluid_mesh.data.materials.append(fluid_material)
+
+        # Set color for the rigid mesh
+        # rigid_material = bpy.data.materials.new(name="RigidMaterial")
+        # rigid_material.use_nodes = True
+        # rigid_bsdf = rigid_material.node_tree.nodes["Principled BSDF"]
+        # rigid_bsdf.inputs['Base Color'].default_value = (1, 0, 0, 1)  # Red color
+
         rigid_mesh = utils.trimesh_to_blender_object(rigid_mesh, object_name="Rigid")
+        # if rigid_mesh.data.materials:
+        #     rigid_mesh.data.materials[0] = rigid_material
+        # else:
+        #     rigid_mesh.data.materials.append(rigid_material)
+            
         self.render_mesh([fluid_mesh, rigid_mesh], output_path)
         
     def add_container(self, container: container.Container):
