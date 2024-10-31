@@ -13,8 +13,8 @@ def process_frame(Renderer: render.Render, output_dir, i, is_coupled):
         container_mesh = utils.get_rigid_from_mesh(f'{output_dir}/0/container.obj')
         Renderer.render_coupled_fluid_rigid(fluid_mesh, rigid_mesh, container_mesh, f'{output_dir}/{i}/output.png')
     else:
-        fluid_mesh = utils.get_rigid_from_mesh(f'{output_dir}/{i}/output.obj')
-        Renderer.render_fluid_mesh(fluid_mesh, f'{output_dir}/{i}/output.png')
+        fluid_mesh = utils.get_rigid_from_mesh(f'{output_dir}/{i}/fluid.obj')
+        Renderer.render_fluid(fluid_mesh, f'{output_dir}/{i}/output.png')
     
 def worker(Renderer, output_dir, frame, is_coupled):
     try:

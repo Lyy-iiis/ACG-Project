@@ -19,9 +19,15 @@ ACG-Project
 
 ## Demo
 
+### Fluid Simulation
+
 https://github.com/user-attachments/assets/ca0cbeda-95f9-48c9-b504-afa252acb9d9
 
+### Large Scale Fluid Simulation
+
 https://github.com/user-attachments/assets/9519dccd-26f6-4435-9b1d-1b6c1aae6cd2
+
+### Rigid-Fluid Interaction
 
 https://github.com/user-attachments/assets/a4f351b3-da79-40de-9e15-1973ab6f4ab7
 

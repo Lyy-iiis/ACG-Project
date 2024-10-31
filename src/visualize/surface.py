@@ -35,11 +35,13 @@ if __name__ == "__main__":
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--radius', type=float, default=0.01)
     parser.add_argument('--smoothing-length', type=float, default=3.5)
+    parser.add_argument('--frame', type=int, default=0)
 
     args = parser.parse_args()
     frame_list = os.listdir(args.input_dir)
     frame_list.sort(key=lambda x: int(x))
-    num_frames = len(frame_list)
+    num_frames = args.frame if args.frame > 0 else len(frame_list)
+    frame_list = frame_list[:num_frames]
 
 
     # Using a pool of workers to process the images

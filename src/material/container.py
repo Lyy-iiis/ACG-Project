@@ -8,11 +8,16 @@ class Container:
     def __init__(self, width, height, depth, fluid: Fluid, rigid: RigidBody):
         self.domain_size = ti.Vector([width, height, depth])
         self.fluid = fluid
-        self.rigid = rigid
+        if rigid is None:
+            self.rigid = RigidBody("Ball", radius=0.1, position=np.array([0,0,0]))
+            self.rigid_num_particles = 0
+        else:
+            self.rigid = rigid
+            self.rigid_num_particles = int(self.rigid.num_particles)
         self.offset = fluid.original_positions
         self.h = fluid.h
-        self.max_num_particles = self.fluid.num_particles
-        self.max_num_particles = int(self.fluid.num_particles + self.rigid.num_particles)
+            
+        self.max_num_particles = int(self.fluid.num_particles + self.rigid_num_particles)
         print("Max number of particles", self.max_num_particles)
         
         self.grid_x = int(width / fluid.grid_size_x) + 1
@@ -33,10 +38,16 @@ class Container:
         ti.root.dense(ti.i, self.max_num_particles).dynamic(ti.j, 2048).place(self.neighbour)
         self.neighbour_num = ti.field(dtype=ti.i32, shape=self.max_num_particles)
         
-        self.rigid_positions = ti.Vector.field(3, dtype=ti.f32, shape=int(self.rigid.num_particles))
-        self.rigid_velocities = ti.Vector.field(3, dtype=ti.f32, shape=int(self.rigid.num_particles))
-        self.rigid_volumes = ti.field(dtype=ti.f32, shape=int(self.rigid.num_particles))
-        self.rigid_masses = ti.field(dtype=ti.f32, shape=int(self.rigid.num_particles))
+        if rigid is not None:
+            self.rigid_positions = ti.Vector.field(3, dtype=ti.f32, shape=int(self.rigid_num_particles))
+            self.rigid_velocities = ti.Vector.field(3, dtype=ti.f32, shape=int(self.rigid_num_particles))
+            self.rigid_volumes = ti.field(dtype=ti.f32, shape=int(self.rigid_num_particles))
+            self.rigid_masses = ti.field(dtype=ti.f32, shape=int(self.rigid_num_particles))
+        else:
+            self.rigid_positions = ti.Vector.field(3, dtype=ti.f32, shape=1)
+            self.rigid_velocities = ti.Vector.field(3, dtype=ti.f32, shape=1)
+            self.rigid_volumes = ti.field(dtype=ti.f32, shape=1)
+            self.rigid_masses = ti.field(dtype=ti.f32, shape=1)
         self.is_fluid = ti.field(dtype=ti.i32, shape=self.max_num_particles)
         # self.update()
         
@@ -83,15 +94,18 @@ class Container:
         
         for i in range(self.fluid.num_particles):
             self.is_fluid[i] = 1
-        for i in range(self.rigid.num_particles):
+        for i in range(self.rigid_num_particles):
             self.is_fluid[i+self.fluid.num_particles] = 0
 
     def get_rigid_pos(self):
+        if self.rigid_num_particles == 0:
+            return
+        
         state = self.rigid.get_states()
         voxel = self.rigid.voxel
-        self.rigid_positions_np = np.zeros((self.rigid.num_particles, 3), dtype=np.float32)
+        self.rigid_positions_np = np.zeros((self.rigid_num_particles, 3), dtype=np.float32)
         transform = np.vstack((np.hstack((state["orientation"], state["position"].reshape(-1, 1))), [0, 0, 0, 1]))
-        pos = transform @ np.hstack((voxel, np.ones((self.rigid.num_particles, 1)))).T
+        pos = transform @ np.hstack((voxel, np.ones((self.rigid_num_particles, 1)))).T
         self.rigid_positions_np = pos[:3].T
         self.rigid_velocities_np = state["velocity"] + np.cross(state["angular_velocity"], pos[:3].T - state["position"])
         # max_x, max_y, max_z = np.max(self.rigid_positions_np, axis=0)
@@ -112,7 +126,7 @@ class Container:
             self.grid_num[x_id, y_id, z_id] += 1
             self.idx_to_grid[p_i] = ti.Vector([x_id, y_id, z_id])
         
-        for p_i in range(self.rigid.num_particles):
+        for p_i in range(self.rigid_num_particles):
             pos = self.rigid_positions[p_i] - self.offset + self.domain_size
             x_id = int(pos[0] / self.grid_size_x)
             y_id = int(pos[1] / self.grid_size_y)
@@ -120,7 +134,7 @@ class Container:
             self.grid[x_id, y_id, z_id].append(p_i+self.fluid.num_particles)
             self.grid_num[x_id, y_id, z_id] += 1
             self.idx_to_grid[p_i+self.fluid.num_particles] = ti.Vector([x_id, y_id, z_id])
-    
+
     @ti.func
     def update_neighbour(self):
         for p_i in range(self.fluid.num_particles):
@@ -141,8 +155,8 @@ class Container:
                             self.neighbour[p_i].append(p_j)
                             self.neighbour_num[p_i] += 1
                             # print(self.is_fluid[p_j])
-                            
-        for p_i in range(self.rigid.num_particles):
+        
+        for p_i in range(self.rigid_num_particles):
             grid_idx = self.idx_to_grid[p_i+self.fluid.num_particles]
             
             for offset in ti.grouped(ti.ndrange((-2, 3), (-2, 3), (-2, 3))):
@@ -159,10 +173,10 @@ class Container:
                         if r_len <= self.fluid.h:
                             self.neighbour[p_i+self.fluid.num_particles].append(p_j)
                             self.neighbour_num[p_i+self.fluid.num_particles] += 1
-      
+    
     @ti.func
     def update_rigid_particle_volume(self):
-        for i in range(self.rigid.num_particles):
+        for i in range(self.rigid_num_particles):
             pos_i = self.rigid_positions[i]
             self.rigid_volumes[i] = 0.0
             for j in range(self.neighbour_num[i+self.fluid.num_particles]):
@@ -175,10 +189,10 @@ class Container:
             self.rigid_volumes[i] = 1.0 / self.rigid_volumes[i]
             self.rigid_masses[i] = self.rigid_volumes[i] * self.fluid.rest_density
         
-        avg_volume = 0.0
-        for i in range(self.rigid.num_particles):
-            avg_volume += self.rigid_volumes[i]
-        avg_volume /= self.rigid.num_particles
+        # avg_volume = 0.0
+        # for i in range(self.rigid_num_particles):
+        #     avg_volume += self.rigid_volumes[i]
+        # avg_volume /= self.rigid_num_particles
             
     
     @ti.func
@@ -250,14 +264,16 @@ class Container:
         self.enforce_domain_boundary()
         
     def step(self):
-        self.get_rigid_pos()
+        if self.rigid is not None:
+            self.get_rigid_pos()
         self.update()
         # self.rigid.update(self.fluid.time_step)
         
     def positions_to_ply(self, path):
         self.fluid.positions_to_ply(os.path.join(path, "fluid.ply"))
-        rigid_positions = self.rigid_positions_np
-        write_ply(rigid_positions, os.path.join(path, "rigid.ply"))
+        if self.rigid_num_particles > 0:
+            rigid_positions = self.rigid_positions_np
+            write_ply(rigid_positions, os.path.join(path, "rigid.ply"))
         # self.rigid.positions_to_ply(path)
     
     def save_mesh(self, path):

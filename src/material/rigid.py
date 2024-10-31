@@ -8,10 +8,10 @@ class RigidBody:
     def __init__(self, type=None, mesh=None, mass=1.0, 
                 radius=1.0, height=1.0, center=[0.0, 0.0, 0.0],size=[1.0, 1.0],
                 inner_radius=0.5, outer_radius=1.0, resolution=100,
-                position=np.array([0.0, 0.0, 0.0]), 
+                position=np.array([0.0, 0.0, 0.0], dtype=np.float32), 
                 orientation=np.eye(3), 
-                velocity=np.array([0.0, 0.0, 0.0]), 
-                angular_velocity=np.array([0.0, 0.0, 0.0]),
+                velocity=np.array([0.0, 0.0, 0.0], dtype=np.float32), 
+                angular_velocity=np.array([0.0, 0.0, 0.0], dtype=np.float32),
                 collision_threshold=np.finfo(np.float32).tiny):
 
         if type == 'Ball':

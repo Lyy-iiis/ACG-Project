@@ -92,28 +92,36 @@ class Render:
             mesh[i].rotation_euler = utils.get_eular_angles(rigid_body[i].orientation.to_numpy())
         self.render_mesh(mesh, output_path)
         
-    def add_fluid(self, fluid: fluid.Fluid):
-        positions = fluid.positions.to_numpy()  
-        # print(f"Fluid positions: {positions}")
-        # assert False
-        for i in range(positions.shape[0]):
-            self.fluid_mesh.append(utils.trimesh_to_blender_object(trimesh.creation.icosphere(radius=0.02, center=positions[i]),
-                object_name=f"Fluid_{i}"))
+    # def add_fluid(self, fluid: fluid.Fluid):
+    #     positions = fluid.positions.to_numpy()  
+    #     # print(f"Fluid positions: {positions}")
+    #     # assert False
+    #     for i in range(positions.shape[0]):
+    #         self.fluid_mesh.append(utils.trimesh_to_blender_object(trimesh.creation.icosphere(radius=0.02, center=positions[i]),
+    #             object_name=f"Fluid_{i}"))
         
-    def render_fluid(self, fluid: fluid.Fluid, output_path):
-        for i in range(len(self.fluid_mesh)):
-            # print(f"Fluid position: {fluid.positions[i]}")
-            self.fluid_mesh[i].location = fluid.positions[i]
-        self.render_mesh(self.fluid_mesh, output_path)
+    # def render_fluid(self, fluid: fluid.Fluid, output_path):
+    #     for i in range(len(self.fluid_mesh)):
+    #         # print(f"Fluid position: {fluid.positions[i]}")
+    #         self.fluid_mesh[i].location = fluid.positions[i]
+    #     self.render_mesh(self.fluid_mesh, output_path)
         
-    def render_fluid_mesh(self, mesh, output_path):
+    def render_fluid(self, mesh, output_path):
         bpy.ops.object.select_all(action='DESELECT')
         for obj in bpy.data.objects:
             if obj.type == 'MESH' and obj != mesh:
                 obj.select_set(True)
         bpy.ops.object.delete()
-        mesh = utils.trimesh_to_blender_object(mesh, object_name="Fluid")
-        self.render_mesh([mesh], output_path)
+        
+        fluid_material = self.get_material("Water", "assets/water.blend")
+        
+        fluid_mesh = utils.trimesh_to_blender_object(mesh, object_name="Fluid")
+        if fluid_mesh.data.materials:
+            fluid_mesh.data.materials[0] = fluid_material
+        else:
+            fluid_mesh.data.materials.append(fluid_material)
+        
+        self.render_mesh([fluid_mesh], output_path)
         
     def render_coupled_fluid_rigid(self, fluid_mesh, rigid_mesh, container_mesh, output_path):
         bpy.ops.object.select_all(action='DESELECT')
