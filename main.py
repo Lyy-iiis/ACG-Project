@@ -1,8 +1,11 @@
 import taichi as ti
+# from material.fluid import basefluid, WCSPH
+from src.material.container import base_container, WCSPH_container
 import src.material
 import src.material.geometry
 from src.render import render, multi_thread
-from src.material import rigid, fluid, cloth, utils, container
+from src.material import rigid, cloth, utils
+from src.material.fluid import basefluid, WCSPH
 from src.visualize import visualizer, video
 import src.render.utils
 from tqdm import tqdm
@@ -13,7 +16,7 @@ object_name = 'bunny'
 device = ti.cpu # Set to ti.cpu when debugging
 output_dir = 'output'
 Dt = 3e-5
-Frame = 1
+Frame = 20
 demo = True
 substeps = int(1 / 60 // Dt)
 
@@ -51,14 +54,14 @@ def test_fluid():
     Renderer = render.Render() # Don't remove this line even if it is not used
     
     # mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
-    # box_size = [0.6, 1.6, 0.4]
-    box_size = [0.2, 0.2, 0.2]
+    box_size = [0.6, 0.4, 0.4]
+    # box_size = [0.2, 0.2, 0.2]
     mesh = src.material.geometry.Box(extents=box_size, center=[0.5, 0.0, 0.0])
     print(mesh.vertices)
     print("Mesh loaded successfully")
     
-    Fluid = fluid.Fluid(mesh, position=np.array([0.5,0,-6]))
-    Container = container.Container(1.2, 1, 0.3, Fluid, None)
+    Fluid = WCSPH.WCSPH(mesh, position=np.array([0.5,0,-6]))
+    Container = WCSPH_container.WCSPHContainer(1.2, 1, 0.3, Fluid, None)
 
     substeps = int(1 / (Fluid.fps * Fluid.time_step))
     for i in range(Frame):
@@ -129,8 +132,8 @@ def test_coupling():
     print("Mesh loaded successfully")
     
     Rigid = rigid.RigidBody(mesh=mesh1, position=np.array([0.5,-0.5,-5],dtype=np.float32))
-    Fluid = fluid.Fluid(mesh, position=np.array([0,0.55,-5],dtype=np.float32))
-    Container = container.Container(1.2, 1.5, 0.5, Fluid, Rigid)
+    Fluid = basefluid.Fluid(mesh, position=np.array([0,0.55,-5],dtype=np.float32))
+    Container = base_container.Container(1.2, 1.5, 0.5, Fluid, Rigid)
 
     substeps = int(1 / (Fluid.fps * Fluid.time_step))
     for i in range(Frame):
@@ -159,9 +162,9 @@ def main():
         os.makedirs(output_dir)
         
     # test_rigid()
-    # test_fluid()
+    test_fluid()
     # test_cloth1()
-    test_coupling()
+    # test_coupling()
     
 if __name__ == '__main__':
     main()

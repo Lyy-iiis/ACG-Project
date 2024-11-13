@@ -1,6 +1,8 @@
 import bpy, mathutils
 
-from src.material import rigid, fluid, cloth, container
+from src.material.container import base_container
+from src.material.fluid import basefluid
+from src.material import rigid, cloth
 import trimesh
 import src.render.utils
 from src.render import utils

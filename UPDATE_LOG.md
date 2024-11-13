@@ -1,5 +1,10 @@
 # Update Log
 
+## 24.11.13 9:30 LYY
+
+- Refactor code structure, moved basic content to base class.
+- Init DFSPH
+
 ## 24.10.31 21:00 LYY
 
 - Increase capability of Container.
