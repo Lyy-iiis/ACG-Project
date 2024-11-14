@@ -116,7 +116,7 @@ class BaseFluid:
             self.particle_volume[i] *= self.rest_density / max_density
             self.mass[i] = self.rest_density * self.particle_volume[i]
         
-        print(self.compute_densities())
+        # print(self.compute_densities())
     
     @ti.func
     def compute_densities(self) -> ti.f32:
