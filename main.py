@@ -1,11 +1,11 @@
 import taichi as ti
 # from material.fluid import basefluid, WCSPH
-from src.material.container import base_container, WCSPH_container
 import src.material
 import src.material.geometry
 from src.render import render, multi_thread
 from src.material import rigid, cloth, utils
-from src.material.fluid import basefluid, WCSPH
+from src.material.fluid import basefluid, WCSPH, DFSPH
+from src.material.container import base_container, WCSPH_container, DFSPH_container
 from src.visualize import visualizer, video
 import src.render.utils
 from tqdm import tqdm
@@ -13,7 +13,7 @@ import numpy as np
 import os
 
 object_name = 'bunny'
-device = ti.cpu # Set to ti.cpu when debugging
+device = ti.gpu # Set to ti.cpu when debugging
 output_dir = 'output'
 Dt = 3e-5
 Frame = 20
@@ -54,22 +54,25 @@ def test_fluid():
     Renderer = render.Render() # Don't remove this line even if it is not used
     
     # mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
-    box_size = [0.6, 0.4, 0.4]
+    box_size = [0.5, 0.6, 0.5]
     # box_size = [0.2, 0.2, 0.2]
-    mesh = src.material.geometry.Box(extents=box_size, center=[0.5, 0.0, 0.0])
+    mesh = src.material.geometry.Box(extents=box_size, center=[0.0, 0.0, 0.0])
     print(mesh.vertices)
     print("Mesh loaded successfully")
     
-    Fluid = WCSPH.WCSPH(mesh, position=np.array([0.5,0,-6]))
-    Container = WCSPH_container.WCSPHContainer(1.2, 1, 0.3, Fluid, None)
+    Fluid = DFSPH.DFSPH(mesh, position=np.array([0.5,0,-6]))
+    Container = DFSPH_container.DFSPHContainer(1.2, 1, 0.3, Fluid, None)
+    
+    # Fluid = WCSPH.WCSPH(mesh, position=np.array([0.5,0,-6]))
+    # Container = WCSPH_container.WCSPHContainer(1.2, 1, 0.3, Fluid, None)
 
     substeps = int(1 / (Fluid.fps * Fluid.time_step))
+    Container.prepare()
     for i in range(Frame):
         if not os.path.exists(f'{output_dir}/{i}'):
             os.makedirs(f'{output_dir}/{i}')
         for _ in tqdm(range(substeps), desc=f"Frame {i}, Avg pos {Fluid.avg_position.to_numpy()[1]:.2f}, Avg density {Fluid.avg_density.to_numpy():.2f}"):
             Container.step()
-            Container.update()
         Container.positions_to_ply(f'{output_dir}/{i}')
     
     print("Visualizing the fluid") 
@@ -157,7 +160,7 @@ def test_coupling():
     
 def main():
     print("Starting main function")
-    ti.init(arch=device,device_memory_fraction=0.95,debug=True)
+    ti.init(arch=device,device_memory_fraction=0.5,debug=True)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         

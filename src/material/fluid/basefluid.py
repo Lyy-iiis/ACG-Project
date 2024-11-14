@@ -9,7 +9,7 @@ class BaseFluid:
                  position=np.array([0.0, 0.0, 0.0]),
                  gravity=np.array([0.0, -9.8, 0.0]),
                  viscosity=10.0, rest_density=1000.0,
-                 time_step=5e-4, fps=60):
+                 time_step=1e-4, fps=60):
         # self.num_particles = num_particles
         self.gravity = ti.Vector.field(3, dtype=ti.f32, shape=())
         self.gravity[None] = gravity
@@ -59,12 +59,20 @@ class BaseFluid:
         self.grid_size_x = (max_x - min_x) / (self.grid_x - 1)
         self.grid_size_y = (max_y - min_y) / (self.grid_y - 1)
         self.grid_size_z = (max_z - min_z) / (self.grid_z - 1)
+        # self.grid_size_x = self.grid_size
+        # self.grid_size_y = self.grid_size
+        # self.grid_size_z = self.grid_size
+        
+        # self.grid_x = int((max_x - min_x) / self.grid_size_x) + 1 # number of grids in x direction
+        # self.grid_y = int((max_y - min_y) / self.grid_size_y) + 1 # number of grids in y direction
+        # self.grid_z = int((max_z - min_z) / self.grid_size_z) + 1 # number of grids in z direction
 
         time1 = time.time()
         
         x_vals = np.linspace(min_x, max_x, self.grid_x)
         y_vals = np.linspace(min_y, max_y, self.grid_y)
         z_vals = np.linspace(min_z, max_z, self.grid_z)
+        
         print(f"Grid size: {self.grid_x} x {self.grid_y} x {self.grid_z}")
         grid = np.array(np.meshgrid(x_vals, y_vals, z_vals, indexing='ij')).astype(np.float32).transpose(1,2,3,0).reshape(-1, 3)
         
@@ -83,17 +91,40 @@ class BaseFluid:
         self.densities = ti.field(dtype=ti.f32, shape=num_particles)
         self.pressures = ti.field(dtype=ti.f32, shape=num_particles)
         self.forces = ti.Vector.field(3, dtype=ti.f32, shape=num_particles)
+        self.particle_volume = ti.field(dtype=ti.f32, shape=num_particles)
         
         self.positions.from_numpy(position)
         
-        self.neighbour = ti.field(dtype=ti.i32)
-        ti.root.dense(ti.i, num_particles).dynamic(ti.j, 2048).place(self.neighbour)
-        self.neighbour_num = ti.field(dtype=ti.i32, shape=num_particles)
+        # self.neighbour = ti.field(dtype=ti.i32)
+        # ti.root.dense(ti.i, num_particles).dynamic(ti.j, 2048).place(self.neighbour)
+        # self.neighbour_num = ti.field(dtype=ti.i32, shape=num_particles)
         
         
     def init_mass(self):
         for i in range(self.num_particles):
-            self.mass[i] = self.rest_density * self.volume[None] / self.num_particles
+            self.particle_volume[i] = self.volume[None] / self.num_particles
+            # self.particle_volume[i] = 0.8 * self.particle_diameter ** 3
+            self.mass[i] = self.rest_density * self.particle_volume[i]
+        avg_density = self.compute_densities()
+        for i in range(self.num_particles):
+            self.particle_volume[i] *= self.rest_density / avg_density
+            self.mass[i] = self.rest_density * self.particle_volume[i]
+        print(self.compute_densities())
+    
+    @ti.kernel
+    def compute_densities(self) -> ti.f32:
+        for i in range(self.num_particles):
+            self.densities[i] = 0.0
+            for j in range(self.num_particles):
+                r = self.positions[i] - self.positions[j]
+                r_len = r.norm()
+                self.densities[i] += self.kernel_func(r_len) * self.mass[j]
+        avg_density = 0.0
+        for i in range(self.num_particles):
+            avg_density += self.densities[i]
+        avg_density /= self.num_particles
+        return avg_density
+       
     
     def compute_volume(self):
         mesh_volume = 0.0
@@ -160,7 +191,7 @@ class BaseFluid:
                             break
                     assert in_neighbour, f"Particle {j} is not in the neighbour list of particle {i}"
                     
-    @ti.func
+    @ti.kernel
     def update_particles(self):
         for i in range(self.num_particles):
             self.velocities[i] += self.forces[i] * self.time_step / self.mass[i]
@@ -169,7 +200,7 @@ class BaseFluid:
         self.avg_position[None] = ti.Vector([0.0, 0.0, 0.0])
         for i in range(self.num_particles):
             self.avg_position[None] += self.positions[i]
-        self.avg_position[None] /= self.num_particles        
+        self.avg_position[None] /= self.num_particles     
 
     # @ti.kernel
     # def step(self):

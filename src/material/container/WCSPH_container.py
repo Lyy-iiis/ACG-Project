@@ -8,23 +8,8 @@ from src.material.geometry import *
 class WCSPHContainer(Container):
     def __init__(self, width, height, depth, fluid, rigid):
         super().__init__(width, height, depth, fluid, rigid)
-    
-    @ti.func
-    def update_rigid_particle_volume(self):
-        for i in range(self.rigid_num_particles):
-            pos_i = self.rigid_positions[i]
-            self.rigid_volumes[i] = 0.0
-            for j in range(self.neighbour_num[i+self.fluid.num_particles]):
-                p_j = self.neighbour[i+self.fluid.num_particles,j]
-                if not self.is_fluid[p_j]:
-                    pos_j = self.rigid_positions[p_j-self.fluid.num_particles]
-                    R = pos_i - pos_j
-                    R_mod = R.norm()
-                    self.rigid_volumes[i] += self.fluid.kernel_func(R_mod)
-            self.rigid_volumes[i] = 1.0 / self.rigid_volumes[i]
-            self.rigid_masses[i] = self.rigid_volumes[i] * self.fluid.rest_density
             
-    @ti.func
+    @ti.kernel
     def compute_densities_and_pressures(self):
         for i in range(self.fluid.num_particles):
             self.fluid.densities[i] = 0.0
@@ -47,6 +32,7 @@ class WCSPHContainer(Container):
         for i in range(self.fluid.num_particles):
             self.fluid.avg_density[None] += self.fluid.densities[i]
         self.fluid.avg_density[None] /= self.fluid.num_particles
+        print(self.fluid.avg_density[None])
     
     @ti.func
     def compute_forces_rigid(self, i, p_j):
@@ -61,11 +47,11 @@ class WCSPHContainer(Container):
         force = pressure_force + viscosity_force
         self.fluid.forces[i] += force
         
-        force_j = - force * self.fluid.mass[i] / self.rigid_masses[p_j-self.fluid.num_particles]
+        force_j = - force * self.fluid.mass[i]
         pos_j = self.rigid_positions[p_j-self.fluid.num_particles]
         self.rigid.apply_internal_force(force_j, pos_j)
         
-    @ti.func
+    @ti.kernel
     def compute_forces(self):
         for i in range(self.fluid.num_particles):
             self.fluid.forces[i] = ti.Vector([0.0, 0.0, 0.0])
@@ -81,7 +67,6 @@ class WCSPHContainer(Container):
         
         # self.rigid.force[None] += self.rigid.mass * self.fluid.gravity[None]
     
-    @ti.kernel
     def update(self):
         self.empty_grid()
         self.update_grid()
@@ -91,7 +76,10 @@ class WCSPHContainer(Container):
         self.compute_forces()
         self.fluid.update_particles()
         self.enforce_domain_boundary()
-        
+    
+    def prepare(self):
+        pass
+    
     def step(self):
         if self.rigid is not None:
             self.get_rigid_pos()

@@ -26,6 +26,13 @@ class Container:
         self.grid_size_x = 2 * width / (self.grid_x - 1)
         self.grid_size_y = 2 * height / (self.grid_y - 1)
         self.grid_size_z = 2 * depth / (self.grid_z - 1)
+        # self.grid_size_x = 2 * fluid.h
+        # self.grid_size_y = 2 * fluid.h
+        # self.grid_size_z = 2 * fluid.h
+        
+        # self.grid_x = int(2 * width / self.grid_size_x) + 1
+        # self.grid_y = int(2 * height / self.grid_size_y) + 1
+        # self.grid_z = int(2 * depth / self.grid_size_z) + 1
         
         self.idx_to_grid = ti.Vector.field(3, dtype=ti.i32, shape=(self.max_num_particles,))
         
@@ -56,7 +63,7 @@ class Container:
         print("Boundary: ", min_x, min_y, min_z, max_x, max_y, max_z)
         print("Container initialized successfully", self.grid_num.shape)
 
-    @ti.func
+    @ti.kernel
     def enforce_domain_boundary(self):
         # make sure the particles are inside the domain
         for p_i in range(self.fluid.num_particles):
@@ -80,7 +87,7 @@ class Container:
         c_f = 0.5
         self.fluid.velocities[p_i] -= (1.0 + c_f) * ti.math.dot(self.fluid.velocities[p_i],vec) * vec
     
-    @ti.func
+    @ti.kernel
     def empty_grid(self):
         for x in range(self.grid_x):
             for y in range(self.grid_y):
@@ -115,7 +122,7 @@ class Container:
         self.rigid_positions.from_numpy(self.rigid_positions_np)
         self.rigid_velocities.from_numpy(self.rigid_velocities_np)
         
-    @ti.func
+    @ti.kernel
     def update_grid(self):
         for p_i in range(self.fluid.num_particles):
             pos = self.fluid.positions[p_i] - self.offset + self.domain_size
@@ -135,7 +142,7 @@ class Container:
             self.grid_num[x_id, y_id, z_id] += 1
             self.idx_to_grid[p_i+self.fluid.num_particles] = ti.Vector([x_id, y_id, z_id])
 
-    @ti.func
+    @ti.kernel
     def update_neighbour(self):
         for p_i in range(self.fluid.num_particles):
             grid_idx = self.idx_to_grid[p_i]
@@ -177,6 +184,40 @@ class Container:
         # for i in range(self.rigid_num_particles):
         #     avg_volume += self.rigid_volumes[i]
         # avg_volume /= self.rigid_num_particles
+        
+    @ti.kernel
+    def update_rigid_particle_volume(self):
+        for i in range(self.rigid_num_particles):
+            pos_i = self.rigid_positions[i]
+            self.rigid_volumes[i] = 0.0
+            for j in range(self.neighbour_num[i+self.fluid.num_particles]):
+                p_j = self.neighbour[i+self.fluid.num_particles,j]
+                if not self.is_fluid[p_j]:
+                    pos_j = self.rigid_positions[p_j-self.fluid.num_particles]
+                    R = pos_i - pos_j
+                    R_mod = R.norm()
+                    self.rigid_volumes[i] += self.fluid.kernel_func(R_mod)
+            self.rigid_volumes[i] = 1.0 / self.rigid_volumes[i]
+            self.rigid_masses[i] = self.rigid_volumes[i] * self.fluid.rest_density
+    
+    @ti.kernel    
+    def test(self):
+        for i in range(self.fluid.num_particles):
+            for j in range(self.neighbour_num[i]):
+                duplicate = False
+                for k in range(self.neighbour_num[i]):
+                    if j != k and self.neighbour[i,j] == self.neighbour[i,k]:
+                        duplicate = True
+                        break
+                assert not duplicate, f"Duplicate neighbour {self.neighbour[i,j]} for particle {i}"
+            for j in range(self.fluid.num_particles):
+                in_neighbour = False
+                if (self.fluid.positions[i] - self.fluid.positions[j]).norm() < self.fluid.h:
+                    for k in range(self.neighbour_num[i]):
+                        if self.neighbour[i, k] == j:
+                            in_neighbour = True
+                            break
+                    assert in_neighbour, f"Particle {j} is not in the neighbour list of particle {i}"
         
     def positions_to_ply(self, path):
         self.fluid.positions_to_ply(os.path.join(path, "fluid.ply"))

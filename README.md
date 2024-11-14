@@ -6,7 +6,10 @@
 ACG-Project
 |   src
 |   │   material 
-|   |   |   # Material for the project
+|   |   |   |   fluid
+|   |   |   |   container
+|   |   |   |   other materials
+|   │   |   # Material for simulation
 |   │   render 
 |   |   |   # Render the scene
 |   │   visualize
