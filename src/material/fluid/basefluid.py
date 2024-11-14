@@ -99,19 +99,26 @@ class BaseFluid:
         # ti.root.dense(ti.i, num_particles).dynamic(ti.j, 2048).place(self.neighbour)
         # self.neighbour_num = ti.field(dtype=ti.i32, shape=num_particles)
         
-        
+    @ti.kernel
     def init_mass(self):
         for i in range(self.num_particles):
             self.particle_volume[i] = self.volume[None] / self.num_particles
             # self.particle_volume[i] = 0.8 * self.particle_diameter ** 3
             self.mass[i] = self.rest_density * self.particle_volume[i]
         avg_density = self.compute_densities()
+        max_density = 0.0
+        min_density = 1e9
         for i in range(self.num_particles):
-            self.particle_volume[i] *= self.rest_density / avg_density
+            max_density = max(max_density, self.densities[i])
+            min_density = min(min_density, self.densities[i])
+        print(f"Max density: {max_density}, Min density: {min_density}")
+        for i in range(self.num_particles):
+            self.particle_volume[i] *= self.rest_density / max_density
             self.mass[i] = self.rest_density * self.particle_volume[i]
+        
         print(self.compute_densities())
     
-    @ti.kernel
+    @ti.func
     def compute_densities(self) -> ti.f32:
         for i in range(self.num_particles):
             self.densities[i] = 0.0

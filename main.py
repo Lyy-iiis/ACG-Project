@@ -16,7 +16,7 @@ object_name = 'bunny'
 device = ti.gpu # Set to ti.cpu when debugging
 output_dir = 'output'
 Dt = 3e-5
-Frame = 20
+Frame = 30
 demo = True
 substeps = int(1 / 60 // Dt)
 
@@ -160,7 +160,7 @@ def test_coupling():
     
 def main():
     print("Starting main function")
-    ti.init(arch=device,device_memory_fraction=0.5,debug=True)
+    ti.init(arch=device,device_memory_fraction=0.8,debug=True)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         

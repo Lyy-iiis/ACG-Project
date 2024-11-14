@@ -118,15 +118,15 @@ class DFSPHContainer(Container):
             self.rho_star[i] = self.fluid.densities[i] / self.fluid.rest_density + self.fluid.time_step * delta
             self.rho_star[i] = ti.max(self.rho_star[i], 1.0)
 
-        rho_star_avg = 0.0
-        avg_rho = 0.0
-        for i in range(self.fluid.num_particles):
-            rho_star_avg += self.rho_star[i]
-            avg_rho += self.fluid.densities[i]
-        avg_rho /= self.fluid.num_particles
-        rho_star_avg /= self.fluid.num_particles
-        print("rho_star_avg: ", rho_star_avg)
-        print("avg_rho: ", avg_rho)
+        # rho_star_avg = 0.0
+        # avg_rho = 0.0
+        # for i in range(self.fluid.num_particles):
+        #     rho_star_avg += self.rho_star[i]
+        #     avg_rho += self.fluid.densities[i]
+        # avg_rho /= self.fluid.num_particles
+        # rho_star_avg /= self.fluid.num_particles
+        # print("rho_star_avg: ", rho_star_avg)
+        # print("avg_rho: ", avg_rho)
     
     @ti.kernel
     def compute_kappa_v(self):
@@ -302,7 +302,7 @@ class DFSPHContainer(Container):
     def update(self):
         self.compute_non_pressure_forces()
         self.fluid.update_velocity()
-        self.correct_density_error()
+        self.correct_density_error() 
         
         self.fluid.update_position()
         
