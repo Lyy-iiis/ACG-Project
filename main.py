@@ -16,7 +16,7 @@ object_name = 'bunny'
 device = ti.gpu # Set to ti.cpu when debugging
 output_dir = 'output'
 Dt = 3e-5
-Frame = 30
+Frame = 300
 demo = True
 substeps = int(1 / 60 // Dt)
 
@@ -54,9 +54,8 @@ def test_fluid():
     Renderer = render.Render() # Don't remove this line even if it is not used
     
     # mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
-    box_size = [0.5, 0.6, 0.5]
-    # box_size = [0.2, 0.2, 0.2]
-    mesh = src.material.geometry.Box(extents=box_size, center=[0.0, 0.0, 0.0])
+    box_size = [0.6, 1.6, 0.4]
+    mesh = src.material.geometry.Box(extents=box_size, center=[0.5, 0.0, 0.0])
     print(mesh.vertices)
     print("Mesh loaded successfully")
     
@@ -71,13 +70,17 @@ def test_fluid():
     for i in range(Frame):
         if not os.path.exists(f'{output_dir}/{i}'):
             os.makedirs(f'{output_dir}/{i}')
+        Container.positions_to_ply(f'{output_dir}/{i}')
         for _ in tqdm(range(substeps), desc=f"Frame {i}, Avg pos {Fluid.avg_position.to_numpy()[1]:.2f}, Avg density {Fluid.avg_density.to_numpy():.2f}"):
             Container.step()
-        Container.positions_to_ply(f'{output_dir}/{i}')
+    
+    if not os.path.exists(f'{output_dir}/{Frame}'):
+        os.makedirs(f'{output_dir}/{Frame}')
+    Container.save_mesh(f'{output_dir}/{Frame}/container.obj')
     
     print("Visualizing the fluid") 
     if demo:
-        os.system(f"python3 src/visualize/surface.py --input_dir {output_dir} --frame {Frame}")
+        os.system(f"python3 src/visualize/surface.py --input_dir {output_dir} --frame {Frame+1}")
         multi_thread.process(output_dir, Frame)
     else:
         visualizer.visualize(output_dir, Frame)
@@ -160,7 +163,7 @@ def test_coupling():
     
 def main():
     print("Starting main function")
-    ti.init(arch=device,device_memory_fraction=0.8,debug=True)
+    ti.init(arch=device,device_memory_fraction=0.95,debug=True)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         

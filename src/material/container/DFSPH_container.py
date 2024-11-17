@@ -14,6 +14,7 @@ class DFSPHContainer(Container):
         self.kappa_v = ti.field(dtype=ti.f32, shape=self.fluid.num_particles)
         self.rho_star = ti.field(dtype=ti.f32, shape=self.fluid.num_particles)
         self.rho_derivative = ti.field(dtype=ti.f32, shape=self.fluid.num_particles)
+        self.k_div_den = ti.field(dtype=ti.f32, shape=self.fluid.num_particles)
         
     @ti.kernel
     def compute_density(self):
@@ -203,6 +204,7 @@ class DFSPHContainer(Container):
         delta_t_inv = 1 / self.fluid.time_step
         for i in range(self.fluid.num_particles):
             self.kappa[i] = (self.rho_star[i] - 1.0) * self.alpha[i] * delta_t_inv 
+            self.k_div_den[i] = self.kappa[i] / self.fluid.densities[i]
             # print("kappa", self.kappa[i])
     
     def correct_density_error(self):
@@ -229,31 +231,32 @@ class DFSPHContainer(Container):
     
     @ti.kernel
     def correct_density_error_step(self):
+        delta = self.fluid.time_step * self.fluid.m_eps
         for i in range(self.fluid.num_particles):
-            k_i = self.kappa[i]
             ret = ti.Vector([0.0, 0.0, 0.0])
+            k_i = self.kappa[i]
             pos_i = self.fluid.positions[i]
-            den_i = self.fluid.densities[i]
+            # den_i = self.fluid.densities[i]
+            k_div_den_i = self.k_div_den[i]
             for j in range(self.neighbour_num[i]):
                 p_j = self.neighbour[i, j]
+                # self.correct_density_error_step_task(i, p_j, ret)
                 if self.is_fluid[p_j]:
-                    k_j = self.kappa[p_j]
-                    k_sum = k_i + k_j
+                    k_sum = k_i + self.kappa[p_j]
                     
-                    if ti.abs(k_sum) > self.fluid.m_eps * self.fluid.time_step:
-                        den_j = self.fluid.densities[p_j]
-                        r = self.fluid.positions[i] - self.fluid.positions[p_j]
+                    if ti.abs(k_sum) > delta:
+                        r = pos_i - self.fluid.positions[p_j]
                         grad_p_j = self.fluid.mass[p_j] * self.fluid.kernel_grad(r)
-                        ret -= grad_p_j * (k_i / den_i + k_j / den_j)
+                        ret -= grad_p_j * (k_div_den_i + self.k_div_den[p_j])
                 else:
                     k_j = k_i
                     
-                    if ti.abs(k_j) > self.fluid.m_eps * self.fluid.time_step:            
+                    if ti.abs(k_j) > delta:            
                         pos_j = self.rigid_positions[p_j - self.fluid.num_particles]
                         r = pos_i - pos_j
                         grad_p_j = self.rigid_masses[p_j - self.fluid.num_particles] * self.fluid.kernel_grad(r)
-                        ret -= grad_p_j * (k_i / den_i)
-                        force_j = grad_p_j * (k_i / den_i) * self.fluid.mass[i] / self.fluid.time_step
+                        ret -= grad_p_j * (k_div_den_i)
+                        force_j = grad_p_j * (k_div_den_i) * self.fluid.mass[i] / self.fluid.time_step
                         self.rigid.apply_internal_force(force_j, pos_j)
             # print(ret)
             self.fluid.velocities[i] += ret

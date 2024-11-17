@@ -9,7 +9,7 @@ class DFSPH(BaseFluid):
                  position=np.array([0.0, 0.0, 0.0]), 
                  gravity=np.array([0.0, -9.8, 0.0]), 
                  viscosity=10, rest_density=1000,
-                 time_step=5e-4, fps=60):
+                 time_step=1e-4, fps=60):
         super().__init__(mesh, position, gravity, viscosity, rest_density, time_step, fps)
     
         self.m_max_iterations_v = 1000
