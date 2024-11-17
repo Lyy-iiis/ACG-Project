@@ -26,11 +26,11 @@ ACG-Project
 
 https://github.com/user-attachments/assets/ca0cbeda-95f9-48c9-b504-afa252acb9d9
 
-### Large Scale Fluid Simulation
+### Large Scale Fluid Simulation (DFSPH)
 
-https://github.com/user-attachments/assets/9519dccd-26f6-4435-9b1d-1b6c1aae6cd2
+https://github.com/user-attachments/assets/5f6af6e3-34b0-4b58-8abf-ba0c50f65d2e
 
-### Rigid-Fluid Interaction
+### Rigid-Fluid Interaction (WCSPH)
 
 https://github.com/user-attachments/assets/a4f351b3-da79-40de-9e15-1973ab6f4ab7
 
