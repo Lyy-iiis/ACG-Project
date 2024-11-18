@@ -20,18 +20,29 @@ class DFSPHContainer(Container):
     def compute_density(self):
         for i in range(self.fluid.num_particles):
             self.fluid.densities[i] = 0.0
+            pos_i = self.fluid.positions[i]
             for j in range(self.neighbour_num[i]):
+                pos_j = ti.Vector([0.0, 0.0, 0.0])
+                mass_j = 0.0
                 p_j = self.neighbour[i, j]
                 if self.is_fluid[p_j]:
-                    r = self.fluid.positions[i] - self.fluid.positions[p_j]
-                    r_len = r.norm()
-                    self.fluid.densities[i] += self.fluid.mass[p_j] * self.fluid.kernel_func(r_len)
+                    # r = self.fluid.positions[i] - self.fluid.positions[p_j]
+                    # r_len = r.norm()
+                    # self.fluid.densities[i] += self.fluid.mass[p_j] * self.fluid.kernel_func(r_len)
+                    pos_j = self.fluid.positions[p_j]
+                    mass_j = self.fluid.mass[p_j]
                 else:
-                    pos_i = self.fluid.positions[i]
+                    # print(1)
+                    # pos_i = self.fluid.positions[i]
+                    # pos_j = self.rigid_positions[p_j - self.fluid.num_particles]
+                    # r = pos_i - pos_j
+                    # r_len = r.norm()
+                    # self.fluid.densities[i] += self.rigid_masses[p_j - self.fluid.num_particles] * self.fluid.kernel_func(r_len)
                     pos_j = self.rigid_positions[p_j - self.fluid.num_particles]
-                    r = pos_i - pos_j
-                    r_len = r.norm()
-                    self.fluid.densities[i] += self.rigid_masses[p_j - self.fluid.num_particles] * self.fluid.kernel_func(r_len)
+                    mass_j = self.rigid_masses[p_j - self.fluid.num_particles]
+                r = pos_i - pos_j
+                r_len = r.norm()
+                self.fluid.densities[i] += mass_j * self.fluid.kernel_func(r_len)
                     
         # for i in range(self.fluid.num_particles):
         #     self.fluid.densities[i] = ti.max(self.fluid.densities[i], self.fluid.rest_density)

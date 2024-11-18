@@ -1,5 +1,9 @@
 # Update Log
 
+## 24.11.18 8:30 LYY
+
+- Finish DFSPH rigid coupling, now the fluid can interact with rigid body correctly.
+
 ## 24.11.17 19:30 LYY
 
 - Finish complete DFSPH, however the rendering is a bit slower.
