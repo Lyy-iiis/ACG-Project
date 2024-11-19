@@ -6,7 +6,7 @@ from src.material.geometry import *
 class Cloth:
     def __init__(self, num_particles_x=100, num_particles_y=100,
                  particle_mass=0.1, 
-                 structural_stiffness=3e4,
+                 structural_stiffness=1e5,
                  shear_stiffness=3e4, 
                  bend_stiffness=3e4,
                  damping=0,
@@ -16,6 +16,8 @@ class Cloth:
                  restitution_coefficient=0.0,
                  fix=False,
                  collision_radius=0.005,
+                 sphere_center=np.array([0.0, 0.0, -2.0]),
+                 sphere_radius=0.1,
                  time_step=3e-5, fps=60):
         self.num_particles_x = num_particles_x
         self.num_particles_y = num_particles_y
@@ -36,6 +38,12 @@ class Cloth:
         # self.grid_cell_size = collision_radius * 2  # grid cell size
         # self.grid_size = 128  # mesh grid size
         # self.max_particles_per_cell = 100  # max number of particles per cell
+        
+        # Basic Cloth and Rigid Coupling: Cloth and Sphere
+        self.sphere_center = ti.Vector.field(3, dtype=ti.f32, shape=())
+        self.sphere_center[None] = ti.Vector(sphere_center)
+        self.sphere_radius = ti.field(dtype=ti.f32, shape=())
+        self.sphere_radius[None] = sphere_radius
 
         self.positions = ti.Vector.field(3, dtype=ti.f32, shape=(num_particles_x, num_particles_y))
         self.velocities = ti.Vector.field(3, dtype=ti.f32, shape=(num_particles_x, num_particles_y))
@@ -143,7 +151,12 @@ class Cloth:
             # fix the top left particle
             self.is_fixed[0, 0] = 1
             # fix the top right particle
-            self.is_fixed[self.num_particles_x - 1, 0] = 1
+            # self.is_fixed[self.num_particles_x - 1, 0] = 1
+            # # fix the bottom left particle
+            # self.is_fixed[0, self.num_particles_y - 1] = 1
+            # # fix the bottom right particle
+            # self.is_fixed[self.num_particles_x - 1, self.num_particles_y - 1] = 1
+            pass
 
     @ti.kernel
     def compute_forces(self):
@@ -222,6 +235,29 @@ class Cloth:
                 rigid_body.apply_internal_force(collision_force, pos)
     
     @ti.kernel
+    def collision_with_sphere(self):
+        for i, j in self.positions:
+            pos = self.positions[i, j]
+            to_particle = pos - self.sphere_center[None]
+            dist = to_particle.norm()
+            if dist < self.sphere_radius[None]:
+                penetration_depth = self.sphere_radius[None] - dist
+                
+                direction = ti.Vector([0.0, 1.0, 0.0])  # Default value: avoid division by zero
+                if dist > 1e-6:
+                    direction = to_particle / dist
+
+                # Correction position
+                self.positions[i, j] += direction * penetration_depth
+                
+                # Reflection speed
+                vel = self.velocities[i, j]
+                vel_normal = vel.dot(direction) * direction
+                vel_tangent = vel - vel_normal
+                vel_normal *= -self.restitution_coefficient
+                self.velocities[i, j] = vel_tangent + vel_normal
+    
+    @ti.kernel
     def self_collision(self):
         for idx in range(self.num_particles):
             i = idx // self.num_particles_y
@@ -248,6 +284,21 @@ class Cloth:
                         correction = 0.5 * penetration_depth * dir
                         self.positions[i, j] += correction
                         self.positions[ni, nj] -= correction
+        
+    @ti.func
+    def hash_grid_func(self, x, y, z):
+        xi = int(ti.floor(x / self.grid_cell_size))
+        yi = int(ti.floor(y / self.grid_cell_size))
+        zi = int(ti.floor(z / self.grid_cell_size))
+        xi = xi % self.grid_size
+        yi = yi % self.grid_size
+        zi = zi % self.grid_size
+        return xi * self.grid_size * self.grid_size + yi * self.grid_size + zi
+    
+    @ti.kernel
+    def reset_grid(self):
+        for i in range(self.num_grid_cells):
+            self.grid_count[i] = 0
 
     @ti.kernel
     def update(self):
@@ -285,3 +336,7 @@ class Cloth:
         self.compute_forces()
         # self.collision_detection(rigid_body, self.dt)
         self.update()
+        # Collision detection with fixed spheres
+        self.collision_with_sphere()
+        # Self collision
+        # self.self_collision()

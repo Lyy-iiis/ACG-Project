@@ -11,10 +11,12 @@ import src.render.utils
 from tqdm import tqdm
 import numpy as np
 import os
+import math
 
 object_name = 'bunny'
 device = ti.cpu # Set to ti.cpu when debugging
 output_dir = 'output'
+output_mp4 = 'output.mp4'
 Frame = 100
 demo = True
 
@@ -46,7 +48,7 @@ def test_rigid():
         print(f"Frame {i}")
         Renderer.render_rigid_body([mesh_1,mesh_2], [Rigid_1,Rigid_2], f'{output_dir}/{i}/output.png')
         
-    video.create_video(output_dir, 'output.mp4')
+    video.create_video(output_dir, output_mp4)
     
 def test_fluid():
     Renderer = render.Render() # Don't remove this line even if it is not used
@@ -83,12 +85,12 @@ def test_fluid():
     else:
         visualizer.visualize(output_dir, Frame)
             
-    video.create_video(output_dir, 'output.mp4')
+    video.create_video(output_dir, output_mp4)
 
 def test_cloth():
     Renderer = render.Render()
 
-    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, 0.25, -2]), fix=True, num_particles_x=100, num_particles_y=100)
+    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, 0.25, -2.2]), fix=True, damping=0.5)
     print("Cloth created successfully")
     
     substeps = int(1 / (Cloth.fps * Cloth.time_step))
@@ -111,7 +113,36 @@ def test_cloth():
         print(f"Frame {i}")
         Renderer.render_cloth(mesh_cloth, f'{output_dir}/{i}/output.png')
 
-    video.create_video(output_dir, 'output.mp4')
+    video.create_video(output_dir, output_mp4)
+    
+def test_coupled_cloth_rigid():
+    Renderer = render.Render(camera_location=[-1.5, 0, -0.5], camera_rotation=(0, math.radians(-45), 0))
+
+    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, 0.25, -2]), fix=True, damping=0.5)
+    print("Cloth created successfully")
+    
+    substeps = int(1 / (Cloth.fps * Cloth.time_step))
+    
+    flat_positions = ti.Vector.field(3, dtype=ti.f32, shape=(Cloth.num_particles,))
+
+    for i in range(Frame):
+        # if not os.path.exists(f'{output_dir}/{i}'):
+        #     os.makedirs(f'{output_dir}/{i}')
+        Cloth.get_flat_positions(flat_positions)
+        # mesh_rigid = src.render.utils.trimesh_to_blender_object(
+        #         utils.mesh(Rigid_1.vertices, Rigid_1.faces), 
+        #         object_name="Rigid")
+        mesh_cloth = src.render.utils.trimesh_to_blender_object(
+                utils.mesh(flat_positions, Cloth.faces),
+                object_name="ClothMesh")
+        for _ in range(substeps):  
+            Cloth.substep()
+
+        print(f"Frame {i}")
+        Renderer.render_coupled_cloth_rigid(mesh_cloth, f'{output_dir}/{i}/output.png')
+
+    video.create_video(output_dir, output_mp4)
+    
 
 def test_coupling():    
     Renderer = render.Render() # Don't remove this line even if it is not used
@@ -151,7 +182,7 @@ def test_coupling():
     else:
         visualizer.visualize(output_dir, Frame)
             
-    video.create_video(output_dir, 'output.mp4')
+    video.create_video(output_dir, output_mp4)
     
 def main():
     print("Starting main function")
@@ -161,8 +192,9 @@ def main():
         
     # test_rigid()
     # test_fluid()
-    test_cloth()
+    # test_cloth()
     # test_coupling()
+    test_coupled_cloth_rigid()
     
 if __name__ == '__main__':
     main()
