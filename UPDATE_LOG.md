@@ -1,5 +1,9 @@
 # Update Log
 
+## 24.11.19 16:00 TXC
+
+- Finish basic cloth-rigid coupling, change the viewpoint
+
 ## 24.11.19 11:45 TXC
 
 - Modify the cloth rendering architecture to be compatible with the rigid body and fluid architectures

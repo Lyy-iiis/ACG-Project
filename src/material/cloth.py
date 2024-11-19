@@ -148,9 +148,9 @@ class Cloth:
         for i, j in self.positions:
             self.is_fixed[i, j] = 0  # 0: not fixed, 1: fixed
         if fix == 1:
-            # fix the top left particle
-            self.is_fixed[0, 0] = 1
-            # fix the top right particle
+            # # fix the top left particle
+            # self.is_fixed[0, 0] = 1
+            # # fix the top right particle
             # self.is_fixed[self.num_particles_x - 1, 0] = 1
             # # fix the bottom left particle
             # self.is_fixed[0, self.num_particles_y - 1] = 1

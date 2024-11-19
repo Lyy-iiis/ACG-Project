@@ -34,6 +34,14 @@ https://github.com/user-attachments/assets/5f6af6e3-34b0-4b58-8abf-ba0c50f65d2e
 
 https://github.com/user-attachments/assets/a4f351b3-da79-40de-9e15-1973ab6f4ab7
 
+### Cloth Simulation
+
+
+
+### Cloth-Rigid Interaction
+
+
+
 ## Installation
 
 1. Clone the repository
