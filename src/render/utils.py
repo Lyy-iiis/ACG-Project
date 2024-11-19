@@ -35,16 +35,6 @@ def trimesh_to_blender_object(trimesh_obj, object_name="Bunny"):
     obj = bpy.data.objects.new(object_name, mesh)
     bpy.context.collection.objects.link(obj)
 
-    # Enable double-sided rendering
-    if not obj.data.materials:
-        mat = bpy.data.materials.new(name="DoubleSidedMaterial")
-        obj.data.materials.append(mat)
-    else:
-        mat = obj.data.materials[0]
-    
-    # Disable backface culling to enable rendering on both sides
-    mat.use_backface_culling = False  
-
     mesh_info = {
         "name": obj.name,
         "vertices": len(obj.data.vertices),

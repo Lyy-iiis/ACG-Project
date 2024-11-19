@@ -1,5 +1,11 @@
 # Update Log
 
+## 24.11.19 11:45 TXC
+
+- Modify the cloth rendering architecture to be compatible with the rigid body and fluid architectures
+- Finish implementing double-sided rendering of cloth
+- Add basic self-collision
+
 ## 24.11.18 8:30 LYY
 
 - Finish DFSPH rigid coupling, now the fluid can interact with rigid body correctly.

@@ -13,12 +13,10 @@ import numpy as np
 import os
 
 object_name = 'bunny'
-device = ti.gpu # Set to ti.cpu when debugging
+device = ti.cpu # Set to ti.cpu when debugging
 output_dir = 'output'
-Dt = 3e-5
-Frame = 300
+Frame = 100
 demo = True
-substeps = int(1 / 60 // Dt)
 
 def test_rigid():
     Renderer = render.Render()
@@ -87,20 +85,19 @@ def test_fluid():
             
     video.create_video(output_dir, 'output.mp4')
 
-def test_cloth1():
+def test_cloth():
     Renderer = render.Render()
 
-    mesh = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
-    print("Mesh loaded successfully")
-
-    # Rigid_1 = rigid.RigidBody(mesh=mesh, position=np.array([0, 0, -8]))
-
-    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([0, 1, -8]))
+    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, 0.25, -2]), fix=True, num_particles_x=100, num_particles_y=100)
     print("Cloth created successfully")
+    
+    substeps = int(1 / (Cloth.fps * Cloth.time_step))
     
     flat_positions = ti.Vector.field(3, dtype=ti.f32, shape=(Cloth.num_particles,))
 
-    for i in range(100):
+    for i in range(Frame):
+        # if not os.path.exists(f'{output_dir}/{i}'):
+        #     os.makedirs(f'{output_dir}/{i}')
         Cloth.get_flat_positions(flat_positions)
         # mesh_rigid = src.render.utils.trimesh_to_blender_object(
         #         utils.mesh(Rigid_1.vertices, Rigid_1.faces), 
@@ -108,23 +105,11 @@ def test_cloth1():
         mesh_cloth = src.render.utils.trimesh_to_blender_object(
                 utils.mesh(flat_positions, Cloth.faces),
                 object_name="ClothMesh")
-
         for _ in range(substeps):  
             Cloth.substep()
-            # Rigid_1.update(Dt)
-
-            # Detecting collisions between cloth and rigid bodies
-            # Cloth.collision_detection(Rigid_1, 0.01)
-            
-            # Update the state of cloth and rigidbody
-            # Cloth.update(0.001)
-            # Rigid_1.update(0.01)
 
         print(f"Frame {i}")
-        # Renderer.render_cloth1([mesh_cloth, mesh_rigid], f'{output_dir}/output_{i}.png')
-        Renderer.render_cloth1(mesh_cloth, f'{output_dir}/output.png')
-        # Renderer.render_rigid_body([mesh_rigid], [Rigid_1], f'{output_dir}/output_{i}.png')
-
+        Renderer.render_cloth(mesh_cloth, f'{output_dir}/{i}/output.png')
 
     video.create_video(output_dir, 'output.mp4')
 
@@ -176,8 +161,8 @@ def main():
         
     # test_rigid()
     # test_fluid()
-    # test_cloth1()
-    test_coupling()
+    test_cloth()
+    # test_coupling()
     
 if __name__ == '__main__':
     main()

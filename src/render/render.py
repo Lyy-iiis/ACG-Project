@@ -160,20 +160,20 @@ class Render:
             container_mesh.data.materials.append(glass_material)
         return container_mesh
 
-    def render_cloth1(self, mesh: bpy.types.Object, output_path):
-        # # Render the current frame with the cloth mesh
-        # self.render_mesh(mesh, output_path)
-        # # Clear all existing meshes before rendering
-        # bpy.ops.object.select_all(action='DESELECT')
-        # bpy.ops.object.select_by_type(type='MESH')
-        # bpy.ops.object.delete()
-        
+    def render_cloth(self, mesh: bpy.types.Object, output_path):
         # Clear all existing meshes before rendering
         bpy.ops.object.select_all(action='DESELECT')
         for obj in bpy.data.objects:
             if obj.type == 'MESH' and obj != mesh:
                 obj.select_set(True)
         bpy.ops.object.delete()
+        
+        # # Load the cloth material
+        # material = self.get_material("Cloth", "assets/rigid.blend")
+        # if mesh.data.materials:
+        #     mesh.data.materials[0] = material
+        # else:
+        #     mesh.data.materials.append(material)
 
         # Ensure the mesh is the active object in the scene
         bpy.context.view_layer.objects.active = mesh

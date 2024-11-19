@@ -5,27 +5,44 @@ from src.material.geometry import *
 @ti.data_oriented
 class Cloth:
     def __init__(self, num_particles_x=100, num_particles_y=100,
-                 particle_mass=0.1, stiffness=3e4, damping=0,
+                 particle_mass=0.1, 
+                 structural_stiffness=3e4,
+                 shear_stiffness=3e4, 
+                 bend_stiffness=3e4,
+                 damping=0,
                  gravity=np.array([0.0, -9.8, 0.0]),
                  cloth_size=(0.4, 0.4),
                  initial_position=np.array([0.0, 0.0, 0.0]),
                  restitution_coefficient=0.0,
-                 dt=3e-5):
+                 fix=False,
+                 collision_radius=0.005,
+                 time_step=3e-5, fps=60):
         self.num_particles_x = num_particles_x
         self.num_particles_y = num_particles_y
         self.num_particles = num_particles_x * num_particles_y
         self.particle_mass = particle_mass
-        self.stiffness = stiffness
+        self.structural_stiffness = structural_stiffness
+        self.shear_stiffness = shear_stiffness
+        self.bend_stiffness = bend_stiffness
         self.damping = damping
         self.cloth_size = cloth_size
         self.initial_position = initial_position
         self.restitution_coefficient = restitution_coefficient
         self.gravity = gravity
-        self.dt = dt
+        self.time_step = time_step
+        self.fps = fps
+        ## Self Collision (test)
+        # self.collision_radius = collision_radius  # particle collision radius
+        # self.grid_cell_size = collision_radius * 2  # grid cell size
+        # self.grid_size = 128  # mesh grid size
+        # self.max_particles_per_cell = 100  # max number of particles per cell
 
         self.positions = ti.Vector.field(3, dtype=ti.f32, shape=(num_particles_x, num_particles_y))
         self.velocities = ti.Vector.field(3, dtype=ti.f32, shape=(num_particles_x, num_particles_y))
         self.forces = ti.Vector.field(3, dtype=ti.f32, shape=(num_particles_x, num_particles_y))
+        
+        self.is_fixed = ti.field(dtype=ti.i32, shape=(num_particles_x, num_particles_y))
+        self.initialize_fixed_particles(fix)
 
         num_faces = 2 * (self.num_particles_x - 1) * (self.num_particles_y - 1)
         self.faces = ti.Vector.field(3, dtype=ti.i32, shape=num_faces)
@@ -41,7 +58,8 @@ class Cloth:
         self.bend_rest_length = self.structural_rest_length * 2
 
         self.initialize_spring_offsets()
-        self.initialize_particles_flat()
+        # self.initialize_particles_flat()
+        self.initialize_particles_wrinkled()
         self.generate_faces()
 
     def initialize_spring_offsets(self):
@@ -109,13 +127,23 @@ class Cloth:
             z = self.initial_position[2] + self.cloth_size[1] * j / (self.num_particles_y - 1)
             
             # Add random offsets to create an undulating effect
-            random_offset = ti.Vector([ti.random() - 0.5, ti.random() - 0.5]) * 0.001
+            random_offset = ti.Vector([ti.random() - 0.5, ti.random() - 0.5]) * 0.00004
             x += random_offset[0]
             z += random_offset[1]
             
             self.positions[i, j] = ti.Vector([x, y, z])
             self.velocities[i, j] = ti.Vector([0.0, 0.0, 0.0])
             self.forces[i, j] = ti.Vector([0.0, 0.0, 0.0])
+            
+    @ti.kernel
+    def initialize_fixed_particles(self, fix: ti.i32):
+        for i, j in self.positions:
+            self.is_fixed[i, j] = 0  # 0: not fixed, 1: fixed
+        if fix == 1:
+            # fix the top left particle
+            self.is_fixed[0, 0] = 1
+            # fix the top right particle
+            self.is_fixed[self.num_particles_x - 1, 0] = 1
 
     @ti.kernel
     def compute_forces(self):
@@ -134,7 +162,7 @@ class Cloth:
                 if 0 <= ni < self.num_particles_x and 0 <= nj < self.num_particles_y:
                     pos_j = self.positions[ni, nj]
                     vel_j = self.velocities[ni, nj]
-                    self.apply_spring_force(i, j, ni, nj, pos_i, pos_j, vel_i, vel_j, self.structural_rest_length)
+                    self.apply_spring_force(i, j, ni, nj, pos_i, pos_j, vel_i, vel_j, self.structural_stiffness, self.structural_rest_length)
 
             # shear_spring_offsets
             for offset in ti.static(self.shear_spring_offsets):
@@ -143,7 +171,7 @@ class Cloth:
                 if 0 <= ni < self.num_particles_x and 0 <= nj < self.num_particles_y:
                     pos_j = self.positions[ni, nj]
                     vel_j = self.velocities[ni, nj]
-                    self.apply_spring_force(i, j, ni, nj, pos_i, pos_j, vel_i, vel_j, self.shear_rest_length)
+                    self.apply_spring_force(i, j, ni, nj, pos_i, pos_j, vel_i, vel_j, self.shear_stiffness, self.shear_rest_length)
 
             # bend_spring_offsets
             for offset in ti.static(self.bend_spring_offsets):
@@ -152,14 +180,14 @@ class Cloth:
                 if 0 <= ni < self.num_particles_x and 0 <= nj < self.num_particles_y:
                     pos_j = self.positions[ni, nj]
                     vel_j = self.velocities[ni, nj]
-                    self.apply_spring_force(i, j, ni, nj, pos_i, pos_j, vel_i, vel_j, self.bend_rest_length)
+                    self.apply_spring_force(i, j, ni, nj, pos_i, pos_j, vel_i, vel_j, self.bend_stiffness, self.bend_rest_length)
 
     @ti.func
-    def apply_spring_force(self, i, j, ni, nj, pos_i, pos_j, vel_i, vel_j, rest_length):
+    def apply_spring_force(self, i, j, ni, nj, pos_i, pos_j, vel_i, vel_j, stiffness, rest_length):
         delta_pos = pos_i - pos_j
         current_length = delta_pos.norm(1e-16)
         direction = delta_pos.normalized(1e-16)
-        spring_force = -self.stiffness * (current_length - rest_length) * direction
+        spring_force = -stiffness * (current_length - rest_length) * direction
 
         relative_vel = vel_i - vel_j
         damping_force = -self.damping * relative_vel.dot(direction) * direction
@@ -192,14 +220,45 @@ class Cloth:
                 collision_force = collision_impulse / dt
 
                 rigid_body.apply_internal_force(collision_force, pos)
+    
+    @ti.kernel
+    def self_collision(self):
+        for idx in range(self.num_particles):
+            i = idx // self.num_particles_y
+            j = idx % self.num_particles_y
+
+            pos_i = self.positions[i, j]
+            if self.is_fixed[i, j] == 1:
+                continue  # skip fixed particles
+
+            cell = self.hash_grid(pos_i.x, pos_i.y, pos_i.z)
+            for offset in range(self.grid_count[cell]):
+                idx_j = self.grid[cell * self.max_particles_per_cell + offset]
+                if idx_j != idx:
+                    ni = idx_j // self.num_particles_y
+                    nj = idx_j % self.num_particles_y
+                    pos_j = self.positions[ni, nj]
+
+                    delta = pos_i - pos_j
+                    dist = delta.norm(1e-6)
+                    if dist < self.collision_radius * 2:
+                        # Collision detected!
+                        penetration_depth = self.collision_radius * 2 - dist
+                        dir = delta.normalized(1e-6)
+                        correction = 0.5 * penetration_depth * dir
+                        self.positions[i, j] += correction
+                        self.positions[ni, nj] -= correction
 
     @ti.kernel
     def update(self):
         # dt = ti.cast(dt_old, ti.f32)
         for i, j in self.positions:
-            acceleration = self.forces[i, j] / self.particle_mass
-            self.velocities[i, j] += acceleration * self.dt
-            self.positions[i, j] += self.velocities[i, j] * self.dt
+            if self.is_fixed[i, j] == 0:
+                acceleration = self.forces[i, j] / self.particle_mass
+                self.velocities[i, j] += acceleration * self.time_step
+                self.positions[i, j] += self.velocities[i, j] * self.time_step
+            else:
+                self.velocities[i, j] = ti.Vector([0.0, 0.0, 0.0])
 
     @ti.kernel
     def generate_faces(self):
