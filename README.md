@@ -40,9 +40,16 @@ https://github.com/user-attachments/assets/74b2ef8f-fb27-43f5-8ba6-3b241366163b
 
 ### Cloth-Rigid Interaction
 
+Fixed rigid body
+
 https://github.com/user-attachments/assets/4028f1b6-e5ae-431b-982a-d30c5923775f
 
 https://github.com/user-attachments/assets/f2b8f1a9-a5af-4f2b-a8ee-b79fccb92ddb
+
+Movable rigid body
+
+https://github.com/user-attachments/assets/aca1b0f9-4a01-4ecc-82eb-214dd6e589b6
+
 
 
 ## Installation
