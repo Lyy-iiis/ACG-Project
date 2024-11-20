@@ -16,8 +16,10 @@ class Cloth:
                  restitution_coefficient=0.0,
                  fix=False,
                  collision_radius=0.005,
-                 sphere_center=np.array([0.0, 0.0, -2.0]),
+                 sphere_center=np.array([0.0, 0.4, -2.0]),
                  sphere_radius=0.1,
+                 sphere_mass=10.0,
+                 sphere_initial_velocity=np.array([0.0, 0.0, 0.0]),
                  time_step=3e-5, fps=60):
         self.num_particles_x = num_particles_x
         self.num_particles_y = num_particles_y
@@ -40,10 +42,25 @@ class Cloth:
         # self.max_particles_per_cell = 100  # max number of particles per cell
         
         # Basic Cloth and Rigid Coupling: Cloth and Sphere
+        # self.sphere_center = ti.Vector.field(3, dtype=ti.f32, shape=())
+        # self.sphere_center[None] = ti.Vector(sphere_center)
+        # self.sphere_radius = ti.field(dtype=ti.f32, shape=())
+        # self.sphere_radius[None] = sphere_radius
+        self.sphere_mass = ti.field(dtype=ti.f32, shape=())
         self.sphere_center = ti.Vector.field(3, dtype=ti.f32, shape=())
-        self.sphere_center[None] = ti.Vector(sphere_center)
+        self.sphere_velocity = ti.Vector.field(3, dtype=ti.f32, shape=())
         self.sphere_radius = ti.field(dtype=ti.f32, shape=())
+        self.sphere_angular_velocity = ti.Vector.field(3, dtype=ti.f32, shape=())
+        self.sphere_angular_acceleration = ti.Vector.field(3, dtype=ti.f32, shape=())
+        
+        self.sphere_mass[None] = sphere_mass
+        self.sphere_center[None] = ti.Vector(sphere_center)
+        self.sphere_velocity[None] = ti.Vector(sphere_initial_velocity)
         self.sphere_radius[None] = sphere_radius
+        self.sphere_angular_velocity[None] = ti.Vector([0.0, 0.0, 0.0])
+        self.sphere_angular_acceleration[None] = ti.Vector([0.0, 0.0, 0.0])
+        self.total_impulse = ti.Vector.field(3, dtype=ti.f32, shape=())
+        
 
         self.positions = ti.Vector.field(3, dtype=ti.f32, shape=(num_particles_x, num_particles_y))
         self.velocities = ti.Vector.field(3, dtype=ti.f32, shape=(num_particles_x, num_particles_y))
@@ -67,7 +84,8 @@ class Cloth:
 
         self.initialize_spring_offsets()
         # self.initialize_particles_flat()
-        self.initialize_particles_wrinkled()
+        # self.initialize_particles_wrinkled()
+        self.initialize_particles_wrinkled_z()
         self.generate_faces()
 
     def initialize_spring_offsets(self):
@@ -144,18 +162,35 @@ class Cloth:
             self.forces[i, j] = ti.Vector([0.0, 0.0, 0.0])
             
     @ti.kernel
+    def initialize_particles_wrinkled_z(self):
+        for i, j in self.positions:
+            x = self.initial_position[0] + self.cloth_size[0] * i / (self.num_particles_x - 1)
+            y = self.initial_position[1] + self.cloth_size[1] * j / (self.num_particles_y - 1)
+            z = self.initial_position[2] 
+            
+            # Add random offsets to create an undulating effect
+            random_offset = ti.Vector([ti.random() - 0.5, ti.random() - 0.5]) * 0.00004
+            x += random_offset[0]
+            y += random_offset[1]
+            
+            self.positions[i, j] = ti.Vector([x, y, z])
+            self.velocities[i, j] = ti.Vector([0.0, 0.0, 0.0])
+            self.forces[i, j] = ti.Vector([0.0, 0.0, 0.0])
+
+            
+    @ti.kernel
     def initialize_fixed_particles(self, fix: ti.i32):
         for i, j in self.positions:
             self.is_fixed[i, j] = 0  # 0: not fixed, 1: fixed
         if fix == 1:
-            # # fix the top left particle
-            # self.is_fixed[0, 0] = 1
-            # # fix the top right particle
-            # self.is_fixed[self.num_particles_x - 1, 0] = 1
-            # # fix the bottom left particle
-            # self.is_fixed[0, self.num_particles_y - 1] = 1
-            # # fix the bottom right particle
-            # self.is_fixed[self.num_particles_x - 1, self.num_particles_y - 1] = 1
+            # fix the top left particle
+            self.is_fixed[0, 0] = 1
+            # fix the top right particle
+            self.is_fixed[self.num_particles_x - 1, 0] = 1
+            # fix the bottom left particle
+            self.is_fixed[0, self.num_particles_y - 1] = 1
+            # fix the bottom right particle
+            self.is_fixed[self.num_particles_x - 1, self.num_particles_y - 1] = 1
             pass
 
     @ti.kernel
@@ -209,33 +244,28 @@ class Cloth:
 
         self.forces[i, j] += total_force
 
-    @ti.kernel
-    def collision_detection(self, rigid_body: ti.template(), dt_old:float):
-        dt = ti.cast(dt_old, ti.f32)
-        for i, j in self.positions:
-            pos = self.positions[i, j]
-            vel = self.velocities[i, j]
-
-            collision, normal = rigid_body.check_collision(pos)
-
-            if collision:
-                # Calculate the relative velocity with respect to a rigid body
-                rel_vel = vel - rigid_body.get_velocity_at_point(pos)
-                vel_normal = rel_vel.dot(normal) * normal
-                vel_tangent = rel_vel - vel_normal
-
-                # Update particle velocity
-                new_rel_vel = vel_tangent - self.restitution_coefficient * vel_normal
-                self.velocities[i, j] = new_rel_vel + rigid_body.get_velocity_at_point(pos)
-
-                # Calculate and apply collision forces
-                collision_impulse = -(1 + self.restitution_coefficient) * vel_normal * self.particle_mass
-                collision_force = collision_impulse / dt
-
-                rigid_body.apply_internal_force(collision_force, pos)
+    # @ti.kernel
+    # def collision_detection(self, rigid_body, dt_old:float):
+    #     dt = ti.cast(dt_old, ti.f32)
+    #     for i, j in self.positions:
+    #         pos = self.positions[i, j]
+    #         vel = self.velocities[i, j]
+    #         collision, normal = rigid_body.check_collision(pos)
+    #         if collision:
+    #             # Calculate the relative velocity with respect to a rigid body
+    #             rel_vel = vel - rigid_body.get_velocity_at_point(pos)
+    #             vel_normal = rel_vel.dot(normal) * normal
+    #             vel_tangent = rel_vel - vel_normal
+    #             # Update particle velocity
+    #             new_rel_vel = vel_tangent - self.restitution_coefficient * vel_normal
+    #             self.velocities[i, j] = new_rel_vel + rigid_body.get_velocity_at_point(pos)
+    #             # Calculate and apply collision forces
+    #             collision_impulse = -(1 + self.restitution_coefficient) * vel_normal * self.particle_mass
+    #             collision_force = collision_impulse / dt
+    #             rigid_body.apply_internal_force(collision_force, pos)
     
     @ti.kernel
-    def collision_with_sphere(self):
+    def collision_with_fixed_sphere(self):
         for i, j in self.positions:
             pos = self.positions[i, j]
             to_particle = pos - self.sphere_center[None]
@@ -256,6 +286,30 @@ class Cloth:
                 vel_tangent = vel - vel_normal
                 vel_normal *= -self.restitution_coefficient
                 self.velocities[i, j] = vel_tangent + vel_normal
+                
+    @ti.kernel
+    def collision_with_sphere(self):
+        for i, j in self.positions:
+            pos = self.positions[i, j]
+            to_particle = pos - self.sphere_center[None]
+            dist = to_particle.norm()
+            if dist < self.sphere_radius[None]:
+                direction = to_particle.normalized()
+                penetration_depth = self.sphere_radius[None] - dist
+                # 修正粒子位置，防止穿透
+                self.positions[i, j] += direction * penetration_depth
+
+                # 计算相对速度
+                relative_velocity = self.velocities[i, j] - self.sphere_velocity[None]
+                normal_velocity = relative_velocity.dot(direction)
+
+                if normal_velocity < 0:
+                    # 计算冲量
+                    impulse = -normal_velocity * direction * self.particle_mass
+                    # 更新粒子速度（完全非弹性碰撞，粒子速度等于球体速度）
+                    self.velocities[i, j] = self.sphere_velocity[None]
+                    # 累积作用在球体上的冲量
+                    ti.atomic_add(self.total_impulse[None], -impulse)
     
     @ti.kernel
     def self_collision(self):
@@ -302,7 +356,6 @@ class Cloth:
 
     @ti.kernel
     def update(self):
-        # dt = ti.cast(dt_old, ti.f32)
         for i, j in self.positions:
             if self.is_fixed[i, j] == 0:
                 acceleration = self.forces[i, j] / self.particle_mass
@@ -310,6 +363,12 @@ class Cloth:
                 self.positions[i, j] += self.velocities[i, j] * self.time_step
             else:
                 self.velocities[i, j] = ti.Vector([0.0, 0.0, 0.0])
+             
+    @ti.kernel   
+    def update_sphere(self):
+        gravity = ti.Vector(self.gravity)
+        self.sphere_velocity[None] += gravity * self.time_step
+        self.sphere_center[None] += self.sphere_velocity[None] * self.time_step
 
     @ti.kernel
     def generate_faces(self):
@@ -336,7 +395,16 @@ class Cloth:
         self.compute_forces()
         # self.collision_detection(rigid_body, self.dt)
         self.update()
-        # Collision detection with fixed spheres
+        
+        self.total_impulse[None] = ti.Vector([0.0, 0.0, 0.0])
+        
+        ## Collision detection with fixed spheres
+        # self.collision_with_fixed_sphere()
+        
         self.collision_with_sphere()
-        # Self collision
+        
+        ## Self collision
         # self.self_collision()
+        
+        self.sphere_velocity[None] += self.total_impulse[None] / self.sphere_mass[None]
+        self.update_sphere()

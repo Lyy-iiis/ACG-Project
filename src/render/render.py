@@ -9,6 +9,7 @@ from src.render import utils
 import src.material.utils
 import taichi as ti
 import numpy as np
+import math
 
 class Render:
     def __init__(self, camera_location=(0, 0, 0), 
@@ -23,7 +24,7 @@ class Render:
         # direction = mathutils.Vector((0, 0, -6)) - camera.location
         # rot_quat = direction.to_track_quat('Z', 'Y')
         # rotation_euler = rot_quat.to_euler()
-        bpy.ops.object.camera_add(location=camera_location, rotation=camera_rotation)
+        bpy.ops.object.camera_add(align='WORLD', location=camera_location, rotation=camera_rotation)
         camera = bpy.context.object
         # self.look_at(camera, mathutils.Vector((0, 0, -6)))
         bpy.context.scene.camera = camera
@@ -41,20 +42,29 @@ class Render:
 
         # Add Background node
         bg_node = nodes.new(type='ShaderNodeBackground')
+        bg_node.location = (200, 0)
         bg_node.inputs['Color'].default_value = bg_color
 
         # Add Environment Texture node
         env_texture_node = nodes.new(type='ShaderNodeTexEnvironment')
+        env_texture_node.location = (-200, 0)
         env_texture_node.image = bpy.data.images.load('assets/background.hdr')
 
+        ## Add Mapping node to rotate the environment texture
+        # mapping_node = nodes.new(type='ShaderNodeMapping')
+        # mapping_node.location = (-400, 0)
+        # mapping_node.inputs['Rotation'].default_value[0] = math.radians(90)  # Rotate 90 degrees around Y axis
+        
         # Add Output node
         output_node = nodes.new(type='ShaderNodeOutputWorld')
-
+        output_node.location = (400, 0)
+        
         # Link nodes
+        # links.new(mapping_node.outputs['Vector'], env_texture_node.inputs['Vector'])
         links.new(env_texture_node.outputs['Color'], bg_node.inputs['Color'])
         links.new(bg_node.outputs['Background'], output_node.inputs['Surface'])
-        bg_node = bpy.context.scene.world.node_tree.nodes['Background']
-        bg_node.inputs['Color'].default_value = bg_color  # RGBA values for dark gray background
+        # bg_node = bpy.context.scene.world.node_tree.nodes['Background']
+        # bg_node.inputs['Color'].default_value = bg_color  # RGBA values for dark gray background
 
         # Create a new light source
         bpy.ops.object.light_add(type='POINT', location=light_location)
@@ -73,7 +83,7 @@ class Render:
         # assume we're using euler rotation
         obj_camera.rotation_euler = rot_quat.to_euler()
         
-    def render_mesh(self, mesh_list:list, output_path):    
+    def render_mesh(self, mesh_list: list, output_path):    
         # Set the mesh as the active object
         for mesh in mesh_list:
             bpy.context.view_layer.objects.active = mesh
@@ -168,12 +178,13 @@ class Render:
                 obj.select_set(True)
         bpy.ops.object.delete()
         
-        ## Load the cloth material
-        # material = self.get_material("Cloth", "assets/rigid.blend")
-        # if mesh.data.materials:
-        #     mesh.data.materials[0] = material
-        # else:
-        #     mesh.data.materials.append(material)
+        # Load the cloth material
+        # material = self.get_material("Felt kvadrat 0967", "assets/cloth.blend")
+        material = self.get_material("Realistic patterned fabric", "assets/cloth3.blend")
+        if mesh.data.materials:
+            mesh.data.materials[0] = material
+        else:
+            mesh.data.materials.append(material)
 
         # Ensure the mesh is the active object in the scene
         bpy.context.view_layer.objects.active = mesh
@@ -188,7 +199,7 @@ class Render:
         # Render the current frame to the given file path
         bpy.ops.render.render(write_still=True)
         
-    def render_coupled_cloth_rigid(self, cloth_mesh, output_path):
+    def render_coupled_cloth_fixed_rigid(self, cloth_mesh, output_path):
         # Clear all existing meshes before rendering
         bpy.ops.object.select_all(action='DESELECT')
         for obj in bpy.data.objects:
@@ -207,13 +218,14 @@ class Render:
         # Add rigid body physics to the sphere
         bpy.ops.rigidbody.object_add()
         sphere.rigid_body.type = 'PASSIVE'  # Set the sphere as a passive rigid body
-
-        ## Load the cloth material
-        # material = self.get_material("Cloth", "assets/rigid.blend")
-        # if mesh.data.materials:
-        #     mesh.data.materials[0] = material
-        # else:
-        #     mesh.data.materials.append(material)
+        
+        # Load the cloth material
+        material = self.get_material("Satin Fabric", "assets/cloth6.blend")
+        # material = self.get_material("Realistic patterned fabric", "assets/cloth4.blend")
+        if cloth_mesh.data.materials:
+            cloth_mesh.data.materials[0] = material
+        else:
+            cloth_mesh.data.materials.append(material)
         
         ## Assign material to the rigid body sphere
         # Load the material
@@ -224,7 +236,67 @@ class Render:
         else:
             sphere.data.materials.append(rigid_material)
         
+        # # Rotate all meshes around the x-axis by 90 degrees
+        # for obj in bpy.data.objects:
+        #     if obj.type == 'MESH':
+        #         obj.rotation_euler[0] += 1.5708  # 90 degrees in radians
 
+        # Ensure the mesh is the active object in the scene
+        bpy.context.view_layer.objects.active = cloth_mesh
+        
+        # Smooth shading
+        bpy.ops.object.shade_smooth()
+
+        # Set render parameters (like resolution, camera, etc.)
+        bpy.context.scene.render.filepath = output_path  # Set the output path
+        bpy.context.scene.render.engine = 'CYCLES'  # Use Cycles engine for rendering
+
+        # Set the output image format
+        bpy.context.scene.render.image_settings.file_format = 'PNG'
+
+        # Render the current frame to the given file path
+        bpy.ops.render.render(write_still=True)
+        
+    def render_coupled_cloth_rigid(self, cloth_mesh, center, radius, output_path):
+        # Clear all existing meshes before rendering
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in bpy.data.objects:
+            if obj.type == 'MESH' and obj != cloth_mesh:
+                obj.select_set(True)
+        bpy.ops.object.delete()
+
+        ## Add a rigid body sphere object to the scene
+        # Create a new sphere
+        radius_float = float(radius[None])
+        radius_float *= 0.9
+        center_tuple = (center[None][0], center[None][1], center[None][2])
+        bpy.ops.mesh.primitive_uv_sphere_add(
+            radius=radius_float, 
+            location=center_tuple
+        )
+        sphere = bpy.context.object  # Get the newly added sphere
+        
+        # Add rigid body physics to the sphere
+        bpy.ops.rigidbody.object_add()
+        sphere.rigid_body.type = 'PASSIVE'  # Set the sphere as a passive rigid body
+
+        # Load the cloth material
+        material = self.get_material("Satin Fabric", "assets/cloth6.blend")
+        # material = self.get_material("Realistic patterned fabric", "assets/cloth4.blend")
+        if cloth_mesh.data.materials:
+            cloth_mesh.data.materials[0] = material
+        else:
+            cloth_mesh.data.materials.append(material)
+        
+        ## Assign material to the rigid body sphere
+        # Load the material
+        rigid_material = self.get_material('Realistic procedural gold', 'assets/rigid.blend')
+        # Assign the material to the sphere
+        if sphere.data.materials:
+            sphere.data.materials[0] = rigid_material
+        else:
+            sphere.data.materials.append(rigid_material)
+        
         # Ensure the mesh is the active object in the scene
         bpy.context.view_layer.objects.active = cloth_mesh
         
@@ -247,7 +319,7 @@ class Render:
         # Load the .blend file
         blend_file_path = file_name
         with bpy.data.libraries.load(blend_file_path, link=False) as (data_from, data_to):
-            # print(data_from.materials)
+            print(data_from.materials)
             if material_name in data_from.materials:
                 data_to.materials = [material_name]
             else:

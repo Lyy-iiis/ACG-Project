@@ -59,7 +59,7 @@ def test_fluid():
     print(mesh.vertices)
     print("Mesh loaded successfully")
     
-    Fluid = DFSPH.DFSPH(mesh, position=np.array([0.5,0,-6]))
+    Fluid = DFSPH.DFSPH(mesh, position=np.array([0.5, 0, -6]))
     Container = DFSPH_container.DFSPHContainer(1.2, 1, 0.3, Fluid, None)
     
     # Fluid = WCSPH.WCSPH(mesh, position=np.array([0.5,0,-6]))
@@ -115,10 +115,46 @@ def test_cloth():
 
     video.create_video(output_dir, output_mp4)
     
-def test_coupled_cloth_rigid():
+def calculate_camera_rotation(camera_position, look_at):
+    """
+    Calculate the Euler angles (in degrees) for a camera located at `camera_position`,
+    looking at a point specified by `look_at`.
+
+    Parameters:
+        camera_position (list or np.array): The position of the camera in 3D space [x, y, z].
+        look_at (list or np.array): The target point in 3D space the camera is looking at [x, y, z].
+
+    Returns:
+        tuple: Euler angles (yaw, pitch, roll) in degrees.
+    """
+    # Convert inputs to numpy arrays
+    camera_position = np.array(camera_position)
+    look_at = np.array(look_at)
+    
+    # Compute the direction vector
+    direction = look_at - camera_position
+    direction = direction / np.linalg.norm(direction)  # Normalize the vector
+
+    # Calculate pitch (rotation around x-axis)
+    pitch = math.asin(direction[1])  # Positive y-axis is vertical
+
+    # Calculate yaw (rotation around y-axis)
+    yaw = math.atan2(direction[0], -direction[2])  # Relative to the negative z-axis
+
+    # Roll (rotation around z-axis) is assumed to be 0
+    roll = 0.0
+
+    # Convert radians to degrees
+    pitch_deg = math.degrees(pitch)
+    yaw_deg = math.degrees(yaw)
+    roll_deg = math.degrees(roll)
+
+    return (pitch_deg, -yaw_deg, roll_deg)
+
+def test_coupled_cloth_fixed_rigid():
     Renderer = render.Render(camera_location=[-1.5, 0, -0.5], camera_rotation=(0, math.radians(-45), 0))
 
-    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, 0.25, -2]), fix=True, damping=0.5)
+    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, 0.25, -2.18]), fix=True, damping=0.5)
     print("Cloth created successfully")
     
     substeps = int(1 / (Cloth.fps * Cloth.time_step))
@@ -140,6 +176,36 @@ def test_coupled_cloth_rigid():
 
         print(f"Frame {i}")
         Renderer.render_coupled_cloth_rigid(mesh_cloth, f'{output_dir}/{i}/output.png')
+
+    video.create_video(output_dir, output_mp4)
+    
+def test_coupled_cloth_rigid():
+    # Renderer = render.Render(camera_location=[-1.5, 0.3, -0.5], camera_rotation=(0, math.radians(-45), 0))
+    Renderer = render.Render(camera_location=[-1.5, 1.5, 0.3], camera_rotation=(math.radians(90), 0, math.radians(225)))
+    # Renderer = render.Render(camera_location=[0, 0, 0], camera_rotation=calculate_camera_rotation([0, 0, 0], [3, 3, -2]))
+
+    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, -0.2, 0.25]), fix=True, damping=0.5, gravity=np.array([0, 0, -9.8]), sphere_center=np.array([0, 0, 0.4]))
+    print("Cloth created successfully")
+    
+    substeps = int(1 / (Cloth.fps * Cloth.time_step))
+    
+    flat_positions = ti.Vector.field(3, dtype=ti.f32, shape=(Cloth.num_particles,))
+
+    for i in range(Frame):
+        # if not os.path.exists(f'{output_dir}/{i}'):
+        #     os.makedirs(f'{output_dir}/{i}')
+        Cloth.get_flat_positions(flat_positions)
+        # mesh_rigid = src.render.utils.trimesh_to_blender_object(
+        #         utils.mesh(Rigid_1.vertices, Rigid_1.faces), 
+        #         object_name="Rigid")
+        mesh_cloth = src.render.utils.trimesh_to_blender_object(
+                utils.mesh(flat_positions, Cloth.faces),
+                object_name="ClothMesh")
+        for _ in range(substeps):  
+            Cloth.substep()
+
+        print(f"Frame {i}")
+        Renderer.render_coupled_cloth_rigid(mesh_cloth, Cloth.sphere_center, Cloth.sphere_radius, f'{output_dir}/{i}/output.png')
 
     video.create_video(output_dir, output_mp4)
     
@@ -174,19 +240,19 @@ def test_coupling():
     
     if not os.path.exists(f'{output_dir}/{Frame}'):
         os.makedirs(f'{output_dir}/{Frame}')
-        
+
     print("Visualizing the fluid") 
     if demo:
         os.system(f"python3 src/visualize/surface.py --input_dir {output_dir} --frame {Frame}")
         multi_thread.process(output_dir, Frame, is_coupled=True)
     else:
         visualizer.visualize(output_dir, Frame)
-            
+
     video.create_video(output_dir, output_mp4)
     
 def main():
     print("Starting main function")
-    ti.init(arch=device,device_memory_fraction=0.95,debug=True)
+    ti.init(arch=device, device_memory_fraction=0.95, debug=True)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         
@@ -194,7 +260,9 @@ def main():
     # test_fluid()
     # test_cloth()
     # test_coupling()
+    # test_coupled_cloth_fixed_rigid()
     test_coupled_cloth_rigid()
+    # print(calculate_camera_rotation([0, 0, 0], [0, 1, -1]))
     
 if __name__ == '__main__':
     main()

@@ -1,14 +1,19 @@
 # Update Log
 
+## 24.11.20 21:36 TXC
+
+- Successfully displayed background image from the correct perspective.
+- Finish basic cloth-rigid (rigid can move) coupling.
+
 ## 24.11.19 16:00 TXC
 
-- Finish basic cloth-rigid coupling, change the viewpoint
+- Finish basic cloth-rigid (fixed) coupling, change the viewpoint.
 
 ## 24.11.19 11:45 TXC
 
-- Modify the cloth rendering architecture to be compatible with the rigid body and fluid architectures
-- Finish implementing double-sided rendering of cloth
-- Add basic self-collision
+- Modify the cloth rendering architecture to be compatible with the rigid body and fluid architectures.
+- Finish implementing double-sided rendering of cloth.
+- Add basic self-collision.
 
 ## 24.11.18 8:30 LYY
 
