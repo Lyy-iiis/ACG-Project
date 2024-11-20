@@ -5,6 +5,7 @@ from tqdm import tqdm
 from src.material import utils
 from src.render import render
 import sys
+import math
             
 def process_frame(Renderer: render.Render, output_dir, i, is_coupled):
     if is_coupled:
@@ -34,7 +35,7 @@ def process(output_dir, frame_num, is_coupled=False):
     # Update progress bar in callback
     def update_pbar(result):
         pbar.update(1)
-    Renderer = render.Render()
+    Renderer = render.Render(camera_location=[-3, 3, 0], camera_rotation=[-math.radians(30), -math.radians(30), 0])
     for i in range(frame_num):
         pool.apply_async(worker, args=(Renderer, output_dir, i, is_coupled), callback=update_pbar)
     pool.close()
