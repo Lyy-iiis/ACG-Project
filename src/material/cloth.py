@@ -296,19 +296,19 @@ class Cloth:
             if dist < self.sphere_radius[None]:
                 direction = to_particle.normalized()
                 penetration_depth = self.sphere_radius[None] - dist
-                # 修正粒子位置，防止穿透
+                # Correction position to avoid penetration
                 self.positions[i, j] += direction * penetration_depth
 
-                # 计算相对速度
+                # Calculate relative velocity
                 relative_velocity = self.velocities[i, j] - self.sphere_velocity[None]
                 normal_velocity = relative_velocity.dot(direction)
 
                 if normal_velocity < 0:
-                    # 计算冲量
+                    # Calculate impulse
                     impulse = -normal_velocity * direction * self.particle_mass
-                    # 更新粒子速度（完全非弹性碰撞，粒子速度等于球体速度）
+                    # update particle velocity
                     self.velocities[i, j] = self.sphere_velocity[None]
-                    # 累积作用在球体上的冲量
+                    # Accumulate impulse
                     ti.atomic_add(self.total_impulse[None], -impulse)
     
     @ti.kernel

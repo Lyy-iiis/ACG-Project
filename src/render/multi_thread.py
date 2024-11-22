@@ -35,8 +35,6 @@ def process(output_dir, frame_num, is_coupled=False):
     # Update progress bar in callback
     def update_pbar(result):
         pbar.update(1)
-    # Renderer = render.Render(camera_location=[-10, 10, 0], camera_rotation=[-math.radians(30), -math.radians(30), 0])
-    # Renderer = render.Render(camera_location=[0, 8, 10], camera_rotation=[-math.radians(30), 0, 0])
     Renderer = render.Render()
     for i in range(frame_num):
         pool.apply_async(worker, args=(Renderer, output_dir, i, is_coupled), callback=update_pbar)

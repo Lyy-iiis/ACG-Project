@@ -177,7 +177,7 @@ def test_coupled_cloth_rigid():
 
 def test_coupling():    
     # Renderer = render.Render(camera_location=[-8, 10, 10], camera_rotation=[math.radians(-30), math.radians(-30), 0]) # Don't remove this line even if it is not used
-    Renderer = render.Render(camera_location=[-3+0.87, 3.8-1, 1-1.5], camera_rotation=[math.radians(-30), math.radians(-30), 0]) 
+    Renderer = render.Render(camera_location=[-3+0.87-0.4-0.433*2, 3.8-0.9+0.5*2-0.2, 1-1.5+0.75*2], camera_rotation=[math.radians(-30), math.radians(-30), 0]) 
     # # Renderer = render.Render(camera_location=[-1.5, 1.5, 0.3], camera_rotation=(math.radians(90), 0, math.radians(225)))
     # mesh1 = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
     # box_size = [1.2, 0.8, 0.5]
