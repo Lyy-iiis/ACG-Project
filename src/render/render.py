@@ -142,7 +142,9 @@ class Render:
                 obj.select_set(True)
         bpy.ops.object.delete()
 
-        fluid_material = self.get_material("Water", "assets/water.blend")
+        fluid_material = self.get_material("Sea Water.001", "assets/water2.blend")
+        # fluid_material = self.get_material("Water", "assets/water.blend")
+        # fluid_material = self.get_material("Water", "assets/water4.blend") 
         
         fluid_mesh = utils.trimesh_to_blender_object(fluid_mesh, object_name="Fluid")
         if fluid_mesh.data.materials:
@@ -313,8 +315,7 @@ class Render:
         # Render the current frame to the given file path
         bpy.ops.render.render(write_still=True)
         
-        
-        
+
     def get_material(self, material_name, file_name):
         # Load the .blend file
         blend_file_path = file_name
