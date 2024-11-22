@@ -1,7 +1,6 @@
 from src.material.fluid.basefluid import *
 from src.material.rigid import *
 from src.material.container.base_container import *
-import os
 from src.material.geometry import *
 
 @ti.data_oriented
@@ -32,7 +31,7 @@ class WCSPHContainer(Container):
         for i in range(self.fluid.num_particles):
             self.fluid.avg_density[None] += self.fluid.densities[i]
         self.fluid.avg_density[None] /= self.fluid.num_particles
-        print(self.fluid.avg_density[None])
+        # print(self.fluid.avg_density[None])
     
     @ti.func
     def compute_forces_rigid(self, i, p_j):

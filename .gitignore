@@ -2,3 +2,4 @@ __pycache__/
 .DS_Store
 output/
 output.mp4
+output_old/

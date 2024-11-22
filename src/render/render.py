@@ -319,7 +319,7 @@ class Render:
         # Load the .blend file
         blend_file_path = file_name
         with bpy.data.libraries.load(blend_file_path, link=False) as (data_from, data_to):
-            print(data_from.materials)
+            # print(data_from.materials)
             if material_name in data_from.materials:
                 data_to.materials = [material_name]
             else:
