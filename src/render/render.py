@@ -283,8 +283,8 @@ class Render:
         sphere.rigid_body.type = 'PASSIVE'  # Set the sphere as a passive rigid body
 
         # Load the cloth material
-        material = self.get_material("Satin Fabric", "assets/cloth6.blend")
-        # material = self.get_material("Realistic patterned fabric", "assets/cloth4.blend")
+        # material = self.get_material("Satin Fabric", "assets/cloth6.blend")
+        material = self.get_material("Realistic patterned fabric", "assets/cloth4.blend")
         if cloth_mesh.data.materials:
             cloth_mesh.data.materials[0] = material
         else:

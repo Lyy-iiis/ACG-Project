@@ -14,8 +14,8 @@ class Cloth:
                  cloth_size=(0.4, 0.4),
                  initial_position=np.array([0.0, 0.0, 0.0]),
                  restitution_coefficient=0.0,
-                 fix=False,
-                 collision_radius=0.005,
+                 fix=0,
+                 collision_radius=0.001,
                  sphere_center=np.array([0.0, 0.4, -2.0]),
                  sphere_radius=0.1,
                  sphere_mass=10.0,
@@ -35,11 +35,6 @@ class Cloth:
         self.gravity = gravity
         self.time_step = time_step
         self.fps = fps
-        ## Self Collision (test)
-        # self.collision_radius = collision_radius  # particle collision radius
-        # self.grid_cell_size = collision_radius * 2  # grid cell size
-        # self.grid_size = 128  # mesh grid size
-        # self.max_particles_per_cell = 100  # max number of particles per cell
         
         # Basic Cloth and Rigid Coupling: Cloth and Sphere
         # self.sphere_center = ti.Vector.field(3, dtype=ti.f32, shape=())
@@ -84,9 +79,21 @@ class Cloth:
 
         self.initialize_spring_offsets()
         # self.initialize_particles_flat()
-        # self.initialize_particles_wrinkled()
-        self.initialize_particles_wrinkled_z()
+        self.initialize_particles_wrinkled()
+        # self.initialize_particles_wrinkled_z()  ## 
         self.generate_faces()
+        
+        # Hash grid parameters
+        self.collision_radius = collision_radius
+        self.grid_cell_size = collision_radius * 6
+        self.grid_size = 64
+        self.max_particles_per_cell = 64
+        self.num_grid_cells = self.grid_size ** 3
+
+        self.grid = ti.field(dtype=ti.i32, shape=(self.num_grid_cells, self.max_particles_per_cell))
+        self.grid_count = ti.field(dtype=ti.i32, shape=self.num_grid_cells)
+        self.reset_grid()
+        
 
     def initialize_spring_offsets(self):
         # Connection diagram
@@ -126,7 +133,7 @@ class Cloth:
         #  O - x - O - x - O
         #          |
         #          x
-        #          |        
+        #          |
         #          O
         self.bend_spring_offsets = [
             ti.Vector([2, 0]),
@@ -183,14 +190,14 @@ class Cloth:
         for i, j in self.positions:
             self.is_fixed[i, j] = 0  # 0: not fixed, 1: fixed
         if fix == 1:
-            # fix the top left particle
-            self.is_fixed[0, 0] = 1
-            # fix the top right particle
-            self.is_fixed[self.num_particles_x - 1, 0] = 1
-            # fix the bottom left particle
-            self.is_fixed[0, self.num_particles_y - 1] = 1
-            # fix the bottom right particle
-            self.is_fixed[self.num_particles_x - 1, self.num_particles_y - 1] = 1
+            # # fix the top left particle
+            # self.is_fixed[0, 0] = 1
+            # # fix the top right particle
+            # self.is_fixed[self.num_particles_x - 1, 0] = 1
+            # # fix the bottom left particle
+            # self.is_fixed[0, self.num_particles_y - 1] = 1
+            # # fix the bottom right particle
+            # self.is_fixed[self.num_particles_x - 1, self.num_particles_y - 1] = 1
             pass
 
     @ti.kernel
@@ -311,6 +318,31 @@ class Cloth:
                     # Accumulate impulse
                     ti.atomic_add(self.total_impulse[None], -impulse)
     
+        
+    @ti.func
+    def hash_grid_func(self, x, y, z):
+        xi = int(ti.floor(x/ self.grid_cell_size))
+        yi = int(ti.floor(y / self.grid_cell_size))
+        zi = int(ti.floor(z/ self.grid_cell_size))  ## The center of this scene is at (-0.25, 0.0, -2.25)
+        xi = xi % self.grid_size
+        yi = yi % self.grid_size
+        zi = zi % self.grid_size
+        return xi * self.grid_size * self.grid_size + yi * self.grid_size + zi
+    
+    @ti.kernel
+    def reset_grid(self):
+        for i in range(self.num_grid_cells):
+            self.grid_count[i] = 0
+
+    @ti.kernel
+    def update_grid(self):
+        for i, j in self.positions:
+            pos = self.positions[i, j]
+            cell = self.hash_grid_func(pos.x, pos.y, pos.z)
+            index = ti.atomic_add(self.grid_count[cell], 1)
+            if index < self.max_particles_per_cell:
+                self.grid[cell, index] = i * self.num_particles_y + j
+
     @ti.kernel
     def self_collision(self):
         for idx in range(self.num_particles):
@@ -321,9 +353,10 @@ class Cloth:
             if self.is_fixed[i, j] == 1:
                 continue  # skip fixed particles
 
-            cell = self.hash_grid(pos_i.x, pos_i.y, pos_i.z)
+            cell = self.hash_grid_func(pos_i.x, pos_i.y, pos_i.z)
+            # print(self.grid_count[cell])
             for offset in range(self.grid_count[cell]):
-                idx_j = self.grid[cell * self.max_particles_per_cell + offset]
+                idx_j = self.grid[cell, offset]
                 if idx_j != idx:
                     ni = idx_j // self.num_particles_y
                     nj = idx_j % self.num_particles_y
@@ -332,27 +365,11 @@ class Cloth:
                     delta = pos_i - pos_j
                     dist = delta.norm(1e-6)
                     if dist < self.collision_radius * 2:
-                        # Collision detected!
                         penetration_depth = self.collision_radius * 2 - dist
                         dir = delta.normalized(1e-6)
                         correction = 0.5 * penetration_depth * dir
                         self.positions[i, j] += correction
                         self.positions[ni, nj] -= correction
-        
-    @ti.func
-    def hash_grid_func(self, x, y, z):
-        xi = int(ti.floor(x / self.grid_cell_size))
-        yi = int(ti.floor(y / self.grid_cell_size))
-        zi = int(ti.floor(z / self.grid_cell_size))
-        xi = xi % self.grid_size
-        yi = yi % self.grid_size
-        zi = zi % self.grid_size
-        return xi * self.grid_size * self.grid_size + yi * self.grid_size + zi
-    
-    @ti.kernel
-    def reset_grid(self):
-        for i in range(self.num_grid_cells):
-            self.grid_count[i] = 0
 
     @ti.kernel
     def update(self):
@@ -393,18 +410,19 @@ class Cloth:
 
     def substep(self):
         self.compute_forces()
-        # self.collision_detection(rigid_body, self.dt)
         self.update()
         
-        self.total_impulse[None] = ti.Vector([0.0, 0.0, 0.0])
+        # self.total_impulse[None] = ti.Vector([0.0, 0.0, 0.0])
         
         ## Collision detection with fixed spheres
-        # self.collision_with_fixed_sphere()
+        self.collision_with_fixed_sphere()
         
-        self.collision_with_sphere()
+        # self.collision_with_sphere()
         
-        ## Self collision
-        # self.self_collision()
+        # Self collision
+        self.reset_grid()
+        self.update_grid()
+        self.self_collision()
         
-        self.sphere_velocity[None] += self.total_impulse[None] / self.sphere_mass[None]
-        self.update_sphere()
+        # self.sphere_velocity[None] += self.total_impulse[None] / self.sphere_mass[None]
+        # self.update_sphere()
