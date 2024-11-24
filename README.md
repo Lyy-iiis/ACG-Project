@@ -22,7 +22,7 @@ ACG-Project
 
 ## Demo
 
-### Fluid Simulation
+### Small Scale Fluid Simulation (WCSPH)
 
 https://github.com/user-attachments/assets/ca0cbeda-95f9-48c9-b504-afa252acb9d9
 
@@ -30,9 +30,11 @@ https://github.com/user-attachments/assets/ca0cbeda-95f9-48c9-b504-afa252acb9d9
 
 https://github.com/user-attachments/assets/5f6af6e3-34b0-4b58-8abf-ba0c50f65d2e
 
-### Rigid-Fluid Interaction (WCSPH)
+### Rigid-Fluid Interaction (WCSPH and DFSPH)
 
-https://github.com/user-attachments/assets/a4f351b3-da79-40de-9e15-1973ab6f4ab7
+https://github.com/user-attachments/assets/1f348209-8be1-4035-b11b-24684fd136d0
+
+https://github.com/user-attachments/assets/837c49c2-6097-444c-9041-554311bb1f6a
 
 ### Cloth Simulation
 
