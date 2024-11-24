@@ -14,7 +14,7 @@ import os
 import math
 
 object_name = 'bunny'
-device = ti.cpu # Set to ti.cpu when debugging
+device = ti.gpu # Set to ti.cpu when debugging
 output_dir = 'output'
 output_mp4 = 'output.mp4'
 Frame = 100
@@ -90,7 +90,7 @@ def test_fluid():
 def test_cloth():
     Renderer = render.Render()
 
-    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, 0.25, -2.2]), fix=True, damping=0.5)
+    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, 0.25, -2.2]), fix=1, damping=0.5)
     print("Cloth created successfully")
     
     substeps = int(1 / (Cloth.fps * Cloth.time_step))
@@ -98,12 +98,7 @@ def test_cloth():
     flat_positions = ti.Vector.field(3, dtype=ti.f32, shape=(Cloth.num_particles,))
 
     for i in range(Frame):
-        # if not os.path.exists(f'{output_dir}/{i}'):
-        #     os.makedirs(f'{output_dir}/{i}')
         Cloth.get_flat_positions(flat_positions)
-        # mesh_rigid = src.render.utils.trimesh_to_blender_object(
-        #         utils.mesh(Rigid_1.vertices, Rigid_1.faces), 
-        #         object_name="Rigid")
         mesh_cloth = src.render.utils.trimesh_to_blender_object(
                 utils.mesh(flat_positions, Cloth.faces),
                 object_name="ClothMesh")
@@ -119,7 +114,7 @@ def test_cloth():
 def test_coupled_cloth_fixed_rigid():
     Renderer = render.Render(camera_location=[-1.5, 0, -0.5], camera_rotation=(0, math.radians(-45), 0))
 
-    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, 0.25, -2.2]), fix=True, damping=0.5, sphere_center=[0, 0, -2.0])
+    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, 0.25, -2.2]), damping=0.5, sphere_center=[0, 0, -2.0])
     print("Cloth created successfully")
     
     substeps = int(1 / (Cloth.fps * Cloth.time_step))
@@ -127,12 +122,7 @@ def test_coupled_cloth_fixed_rigid():
     flat_positions = ti.Vector.field(3, dtype=ti.f32, shape=(Cloth.num_particles,))
 
     for i in range(Frame):
-        # if not os.path.exists(f'{output_dir}/{i}'):
-        #     os.makedirs(f'{output_dir}/{i}')
         Cloth.get_flat_positions(flat_positions)
-        # mesh_rigid = src.render.utils.trimesh_to_blender_object(
-        #         utils.mesh(Rigid_1.vertices, Rigid_1.faces), 
-        #         object_name="Rigid")
         mesh_cloth = src.render.utils.trimesh_to_blender_object(
                 utils.mesh(flat_positions, Cloth.faces),
                 object_name="ClothMesh")
@@ -147,9 +137,8 @@ def test_coupled_cloth_fixed_rigid():
 def test_coupled_cloth_rigid():
     # Renderer = render.Render(camera_location=[-1.5, 0.3, -0.5], camera_rotation=(0, math.radians(-45), 0))
     Renderer = render.Render(camera_location=[-1.5, 1.5, 0.3], camera_rotation=(math.radians(90), 0, math.radians(225)))
-    # Renderer = render.Render(camera_location=[0, 0, 0], camera_rotation=calculate_camera_rotation([0, 0, 0], [3, 3, -2]))
 
-    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, -0.2, 0.25]), fix=False, damping=0.5, gravity=np.array([0, 0, -9.8]), sphere_center=np.array([0, 0, 0.4]))
+    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, -0.2, 0.25]), fix=1, damping=0.5, gravity=np.array([0, 0, -9.8]), sphere_center=np.array([0, 0, 0.4]))
     print("Cloth created successfully")
     
     substeps = int(1 / (Cloth.fps * Cloth.time_step))
@@ -157,12 +146,7 @@ def test_coupled_cloth_rigid():
     flat_positions = ti.Vector.field(3, dtype=ti.f32, shape=(Cloth.num_particles,))
 
     for i in range(Frame):
-        # if not os.path.exists(f'{output_dir}/{i}'):
-        #     os.makedirs(f'{output_dir}/{i}')
         Cloth.get_flat_positions(flat_positions)
-        # mesh_rigid = src.render.utils.trimesh_to_blender_object(
-        #         utils.mesh(Rigid_1.vertices, Rigid_1.faces), 
-        #         object_name="Rigid")
         mesh_cloth = src.render.utils.trimesh_to_blender_object(
                 utils.mesh(flat_positions, Cloth.faces),
                 object_name="ClothMesh")
@@ -176,9 +160,7 @@ def test_coupled_cloth_rigid():
     
 
 def test_coupling():    
-    # Renderer = render.Render(camera_location=[-8, 10, 10], camera_rotation=[math.radians(-30), math.radians(-30), 0]) # Don't remove this line even if it is not used
-    Renderer = render.Render(camera_location=[-3+0.87-0.4-0.433*2, 3.8-0.9+0.5*2-0.2, 1-1.5+0.75*2], camera_rotation=[math.radians(-30), math.radians(-30), 0]) 
-    # # Renderer = render.Render(camera_location=[-1.5, 1.5, 0.3], camera_rotation=(math.radians(90), 0, math.radians(225)))
+    Renderer = render.Render(camera_location=[-3+0.87-0.4-0.433*2, 3.8-0.9+0.5*2-0.2, 1-1.5+0.75*2], camera_rotation=[math.radians(-30), math.radians(-30), 0]) # Don't remove this line even if it is not used
     mesh1 = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
     box_size = [1.2, 0.8, 0.5]
     # box_size = [0.4, 0.4, 0.4]
@@ -229,7 +211,6 @@ def main():
     # test_coupling()
     test_coupled_cloth_fixed_rigid()
     # test_coupled_cloth_rigid()
-    # print(calculate_camera_rotation([0, 0, 0], [0, 1, -1]))
     
 if __name__ == '__main__':
     main()

@@ -21,9 +21,6 @@ class Render:
         bpy.ops.object.delete()
         
         # Create a new camera, with default location and rotation
-        # direction = mathutils.Vector((0, 0, -6)) - camera.location
-        # rot_quat = direction.to_track_quat('Z', 'Y')
-        # rotation_euler = rot_quat.to_euler()
         bpy.ops.object.camera_add(align='WORLD', location=camera_location, rotation=camera_rotation)
         camera = bpy.context.object
         # self.look_at(camera, mathutils.Vector((0, 0, -6)))
@@ -49,22 +46,14 @@ class Render:
         env_texture_node = nodes.new(type='ShaderNodeTexEnvironment')
         env_texture_node.location = (-200, 0)
         env_texture_node.image = bpy.data.images.load('assets/background.hdr')
-
-        ## Add Mapping node to rotate the environment texture
-        # mapping_node = nodes.new(type='ShaderNodeMapping')
-        # mapping_node.location = (-400, 0)
-        # mapping_node.inputs['Rotation'].default_value[0] = math.radians(90)  # Rotate 90 degrees around Y axis
         
         # Add Output node
         output_node = nodes.new(type='ShaderNodeOutputWorld')
         output_node.location = (400, 0)
         
         # Link nodes
-        # links.new(mapping_node.outputs['Vector'], env_texture_node.inputs['Vector'])
         links.new(env_texture_node.outputs['Color'], bg_node.inputs['Color'])
         links.new(bg_node.outputs['Background'], output_node.inputs['Surface'])
-        # bg_node = bpy.context.scene.world.node_tree.nodes['Background']
-        # bg_node.inputs['Color'].default_value = bg_color  # RGBA values for dark gray background
 
         # Create a new light source
         bpy.ops.object.light_add(type='POINT', location=light_location)
@@ -237,11 +226,6 @@ class Render:
             sphere.data.materials[0] = rigid_material
         else:
             sphere.data.materials.append(rigid_material)
-        
-        # # Rotate all meshes around the x-axis by 90 degrees
-        # for obj in bpy.data.objects:
-        #     if obj.type == 'MESH':
-        #         obj.rotation_euler[0] += 1.5708  # 90 degrees in radians
 
         # Ensure the mesh is the active object in the scene
         bpy.context.view_layer.objects.active = cloth_mesh

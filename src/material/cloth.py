@@ -35,12 +35,7 @@ class Cloth:
         self.gravity = gravity
         self.time_step = time_step
         self.fps = fps
-        
-        # Basic Cloth and Rigid Coupling: Cloth and Sphere
-        # self.sphere_center = ti.Vector.field(3, dtype=ti.f32, shape=())
-        # self.sphere_center[None] = ti.Vector(sphere_center)
-        # self.sphere_radius = ti.field(dtype=ti.f32, shape=())
-        # self.sphere_radius[None] = sphere_radius
+
         self.sphere_mass = ti.field(dtype=ti.f32, shape=())
         self.sphere_center = ti.Vector.field(3, dtype=ti.f32, shape=())
         self.sphere_velocity = ti.Vector.field(3, dtype=ti.f32, shape=())
@@ -80,7 +75,7 @@ class Cloth:
         self.initialize_spring_offsets()
         # self.initialize_particles_flat()
         self.initialize_particles_wrinkled()
-        # self.initialize_particles_wrinkled_z()  ## 
+        # self.initialize_particles_wrinkled_z()
         self.generate_faces()
         
         # Hash grid parameters
@@ -186,18 +181,18 @@ class Cloth:
 
             
     @ti.kernel
-    def initialize_fixed_particles(self, fix: ti.i32):
+    def initialize_fixed_particles(self, fix):
         for i, j in self.positions:
             self.is_fixed[i, j] = 0  # 0: not fixed, 1: fixed
         if fix == 1:
-            # # fix the top left particle
-            # self.is_fixed[0, 0] = 1
-            # # fix the top right particle
-            # self.is_fixed[self.num_particles_x - 1, 0] = 1
-            # # fix the bottom left particle
-            # self.is_fixed[0, self.num_particles_y - 1] = 1
-            # # fix the bottom right particle
-            # self.is_fixed[self.num_particles_x - 1, self.num_particles_y - 1] = 1
+            # fix the top left particle
+            self.is_fixed[0, 0] = 1
+            # fix the top right particle
+            self.is_fixed[self.num_particles_x - 1, 0] = 1
+            # fix the bottom left particle
+            self.is_fixed[0, self.num_particles_y - 1] = 1
+            # fix the bottom right particle
+            self.is_fixed[self.num_particles_x - 1, self.num_particles_y - 1] = 1
             pass
 
     @ti.kernel
@@ -251,25 +246,6 @@ class Cloth:
 
         self.forces[i, j] += total_force
 
-    # @ti.kernel
-    # def collision_detection(self, rigid_body, dt_old:float):
-    #     dt = ti.cast(dt_old, ti.f32)
-    #     for i, j in self.positions:
-    #         pos = self.positions[i, j]
-    #         vel = self.velocities[i, j]
-    #         collision, normal = rigid_body.check_collision(pos)
-    #         if collision:
-    #             # Calculate the relative velocity with respect to a rigid body
-    #             rel_vel = vel - rigid_body.get_velocity_at_point(pos)
-    #             vel_normal = rel_vel.dot(normal) * normal
-    #             vel_tangent = rel_vel - vel_normal
-    #             # Update particle velocity
-    #             new_rel_vel = vel_tangent - self.restitution_coefficient * vel_normal
-    #             self.velocities[i, j] = new_rel_vel + rigid_body.get_velocity_at_point(pos)
-    #             # Calculate and apply collision forces
-    #             collision_impulse = -(1 + self.restitution_coefficient) * vel_normal * self.particle_mass
-    #             collision_force = collision_impulse / dt
-    #             rigid_body.apply_internal_force(collision_force, pos)
     
     @ti.kernel
     def collision_with_fixed_sphere(self):
