@@ -1,6 +1,14 @@
 # Update Log
 
-## 24.11.20 21:36 TXC
+## 24.11.24 16:15 TXC
+
+- Implement efficiency cloth self-collision detection.
+
+## 24.11.22 12:15 TXC
+
+- Change the perspective of viewing fluid.
+
+## 24.11.20 21:45 TXC
 
 - Successfully displayed background image from the correct perspective.
 - Finish basic cloth-rigid (rigid can move) coupling.
@@ -88,7 +96,7 @@
 
 ## 24.10.20 10:30 TXC
 
-- Modify cloth inplementation.
+- Modify cloth implementation.
 
 ## 24.10.12 16:30 TXC
 
