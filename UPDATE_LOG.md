@@ -1,5 +1,9 @@
 # Update Log
 
+## 24.11.16 13:45 TXC
+
+- Make the fluid transparent.
+
 ## 24.11.26 9:00 LYY
 
 - Implement fluid-rigid (rigid can move) coupling.

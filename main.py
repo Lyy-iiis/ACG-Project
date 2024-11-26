@@ -14,10 +14,10 @@ import os
 import math
 
 object_name = 'rubber_duck'
-device = ti.cpu # Set to ti.cpu when debugging
-output_dir = 'output_fluid'
-output_mp4 = 'output_fluid.mp4'
-Frame = 34
+device = ti.gpu # Set to ti.cpu when debugging
+output_dir = 'output'
+output_mp4 = 'output.mp4'
+Frame = 300
 demo = True
 
 def test_rigid():
