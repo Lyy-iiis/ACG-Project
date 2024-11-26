@@ -72,7 +72,18 @@ class Render:
         # assume we're using euler rotation
         obj_camera.rotation_euler = rot_quat.to_euler()
         
-    def render_mesh(self, mesh_list: list, output_path):    
+    def render_mesh(self, mesh_list: list, output_path):   
+        ## Set render settings and render the image
+        # bpy.context.scene.render.engine = 'BLENDER_EEVEE'
+        # bpy.context.scene.eevee.use_ssr = True  # Enable Screen Space Reflections
+        # bpy.context.scene.eevee.use_ssr_refraction = True 
+        # Set render engine to Cycles
+        bpy.context.scene.render.engine = 'CYCLES'
+        bpy.context.scene.cycles.samples = 128
+        bpy.context.scene.cycles.use_adaptive_sampling = True
+        bpy.context.scene.cycles.use_denoising = True
+        bpy.context.scene.cycles.device = 'GPU'
+        
         # Set the mesh as the active object
         for mesh in mesh_list:
             bpy.context.view_layer.objects.active = mesh
@@ -121,6 +132,17 @@ class Render:
             fluid_mesh.data.materials[0] = fluid_material
         else:
             fluid_mesh.data.materials.append(fluid_material)
+            
+        # Set the alpha value of the fluid material
+        fluid_material.use_nodes = True
+        nodes = fluid_material.node_tree.nodes
+        bsdf = nodes.get('Principled BSDF')
+        if bsdf:
+            bsdf.inputs['Alpha'].default_value = 0.5  # Alpha value = 0.5: half transparent
+            fluid_material.blend_method = 'BLEND'     # Set blend method
+            fluid_material.shadow_method = 'HASHED'    # Set shadow method
+        else:
+            pass
         
         self.render_mesh([fluid_mesh], output_path)
         
@@ -140,6 +162,17 @@ class Render:
             fluid_mesh.data.materials[0] = fluid_material
         else:
             fluid_mesh.data.materials.append(fluid_material)
+            
+        # Set the alpha value of the fluid material
+        fluid_material.use_nodes = True
+        nodes = fluid_material.node_tree.nodes
+        bsdf = nodes.get('Principled BSDF')
+        if bsdf:
+            bsdf.inputs['Alpha'].default_value = 0.5  # Alpha value = 0.5: half transparent
+            fluid_material.blend_method = 'BLEND'     # Set blend method
+            fluid_material.shadow_method = 'HASHED'    # Set shadow method
+        else:
+            pass
 
         rigid_material = self.get_material('Realistic procedural gold', 'assets/rigid.blend')
         rigid_mesh = utils.trimesh_to_blender_object(rigid_mesh, object_name="Rigid")

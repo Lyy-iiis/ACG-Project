@@ -6,7 +6,7 @@
 
 ## 24.11.24 16:15 TXC
 
-- Implement efficiency cloth self-collision detection.
+- Implement efficient cloth self-collision detection.
 
 ## 24.11.22 12:15 TXC
 
