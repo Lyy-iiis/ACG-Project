@@ -64,7 +64,7 @@ class WCSPHContainer(Container):
             self.fluid.forces[i] += self.fluid.gravity[None]
             self.fluid.forces[i] *= self.fluid.mass[i]
         
-        # self.rigid.force[None] += self.rigid.mass * self.fluid.gravity[None]
+        self.rigid.force[None] += self.rigid.mass * self.fluid.gravity[None]
     
     def update(self):
         self.empty_grid()
@@ -74,6 +74,7 @@ class WCSPHContainer(Container):
         self.compute_densities_and_pressures()
         self.compute_forces()
         self.fluid.update_particles()
+        self.rigid.update(self.fluid.time_step)
         self.enforce_domain_boundary()
     
     def prepare(self):

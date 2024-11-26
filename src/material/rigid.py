@@ -33,12 +33,15 @@ class RigidBody:
         
         self.mesh = mesh
         mesh.vertices = mesh.vertices.astype(np.float32)
+        mesh.faces = mesh.faces.astype(np.int32)
         self.vertices = ti.Vector.field(3, dtype=ti.f32, shape=len(mesh.vertices))
+        self.vertices.from_numpy(mesh.vertices)
         self.faces = ti.Vector.field(3, dtype=ti.i32, shape=len(mesh.faces))
-        for i in range(len(mesh.vertices)):
-            self.vertices[i] = mesh.vertices[i]
-        for i in range(len(mesh.faces)):
-            self.faces[i] = mesh.faces[i]
+        self.faces.from_numpy(mesh.faces)
+        # for i in range(len(mesh.vertices)):
+        #     self.vertices[i] = mesh.vertices[i]
+        # for i in range(len(mesh.faces)):
+        #     self.faces[i] = mesh.faces[i]
         self.mass, self.volume = mass, ti.field(ti.f32, shape=())
         self.mass_center_offset = ti.Vector.field(3, dtype=ti.f32, shape=())
         self.centralize() # centralize the mesh

@@ -181,7 +181,7 @@ class Cloth:
 
             
     @ti.kernel
-    def initialize_fixed_particles(self, fix):
+    def initialize_fixed_particles(self, fix: int):
         for i, j in self.positions:
             self.is_fixed[i, j] = 0  # 0: not fixed, 1: fixed
         if fix == 1:

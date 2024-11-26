@@ -61,6 +61,8 @@ class Container:
         min_x, min_y, min_z = self.domain_size + self.offset
         max_x, max_y, max_z = - self.domain_size + self.offset
         print("Boundary: ", min_x, min_y, min_z, max_x, max_y, max_z)
+        print("Fluid Boundary: ", np.min(self.fluid.positions.to_numpy(), axis=0), np.max(self.fluid.positions.to_numpy(), axis=0))
+        print("Rigid Boundary: ", np.min(self.rigid.vertices.to_numpy(), axis=0), np.max(self.rigid.vertices.to_numpy(), axis=0))
         print("Container initialized successfully", self.grid_num.shape)
 
     @ti.kernel

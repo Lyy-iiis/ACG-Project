@@ -1,5 +1,9 @@
 # Update Log
 
+## 24.11.26 9:00 LYY
+
+- Implement fluid-rigid (rigid can move) coupling.
+
 ## 24.11.24 16:15 TXC
 
 - Implement efficiency cloth self-collision detection.
