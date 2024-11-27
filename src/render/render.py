@@ -23,7 +23,6 @@ class Render:
         # Create a new camera, with default location and rotation
         bpy.ops.object.camera_add(align='WORLD', location=camera_location, rotation=camera_rotation)
         camera = bpy.context.object
-        # self.look_at(camera, mathutils.Vector((0, 0, -6)))
         bpy.context.scene.camera = camera
         
         # Set background color
@@ -62,16 +61,6 @@ class Render:
         
         self.fluid_mesh = []
         
-    def look_at(self, obj_camera, point):
-        loc_camera = obj_camera.matrix_world.to_translation()
-
-        direction = point - loc_camera
-        # point the cameras '-Z' and use its 'Y' as up
-        rot_quat = direction.to_track_quat('-Z', 'Y')
-
-        # assume we're using euler rotation
-        obj_camera.rotation_euler = rot_quat.to_euler()
-        
     def render_mesh(self, mesh_list: list, output_path):   
         ## Set render settings and render the image
         # bpy.context.scene.render.engine = 'BLENDER_EEVEE'
@@ -83,6 +72,10 @@ class Render:
         bpy.context.scene.cycles.use_adaptive_sampling = True
         bpy.context.scene.cycles.use_denoising = True
         bpy.context.scene.cycles.device = 'GPU'
+        bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'CUDA'  # or 'OPENCL' depending on your GPU
+        bpy.context.preferences.addons['cycles'].preferences.get_devices()
+        for device in bpy.context.preferences.addons['cycles'].preferences.devices:
+            device.use = True
         
         # Set the mesh as the active object
         for mesh in mesh_list:

@@ -15,10 +15,11 @@ import math
 
 object_name = 'rubber_duck'
 device = ti.gpu # Set to ti.cpu when debugging
-output_dir = 'output'
+output_dir = 'output_1'
 output_mp4 = 'output.mp4'
 Frame = 300
 demo = True
+fixed = True
 
 def test_rigid():
     Renderer = render.Render()
@@ -159,60 +160,29 @@ def test_coupled_cloth_rigid():
     video.create_video(output_dir, output_mp4)
     
 
-def test_coupling():    
-    Renderer = render.Render(camera_location=[-3+0.87-0.4-0.433*2, 3.8-0.9+0.5*2-0.2, 1-1.5+0.75*2], camera_rotation=[math.radians(-30), math.radians(-30), 0]) # Don't remove this line even if it is not used
-    # mesh1 = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
-    # box_size = [1.2, 0.8, 0.5]
-    # # box_size = [0.4, 0.4, 0.4]
-    # mesh = src.material.geometry.Box(extents=box_size, center=[0.0, 0.0, 0.0])
-    # print("Mesh loaded successfully")
-    
-    # Rigid = rigid.RigidBody(mesh=mesh1, position=np.array([0.5,-0.5,-5],dtype=np.float32))
-    
-    # # Fluid = DFSPH.DFSPH(mesh, position=np.array([0,0.55,-5],dtype=np.float32))
-    # # Container = DFSPH_container.DFSPHContainer(1.2, 1.5, 0.5, Fluid, Rigid)
-    # Fluid = WCSPH.WCSPH(mesh, position=np.array([0,0.55,-5],dtype=np.float32))
-    # Container = WCSPH_container.WCSPHContainer(1.2, 1.5, 0.5, Fluid, Rigid)
-
-    # substeps = int(1 / (Fluid.fps * Fluid.time_step))
-    # Container.get_rigid_pos()
-    # Container.prepare()
-    # for i in range(Frame):
-    #     if not os.path.exists(f'{output_dir}/{i}'):
-    #         os.makedirs(f'{output_dir}/{i}')
-    #     Container.positions_to_ply(f'{output_dir}/{i}')
-    #     for _ in tqdm(range(substeps), desc=f"Frame {i}, Avg pos {Fluid.avg_position.to_numpy()[1]:.2f}, Avg density {Fluid.avg_density.to_numpy():.2f}"):
-    #         # Fluid.step()
-    #         Container.step()
-    #     if i == 0:
-    #         Container.save_mesh(f'{output_dir}/{i}/container.obj')
-    
-    # if not os.path.exists(f'{output_dir}/{Frame}'):
-    #     os.makedirs(f'{output_dir}/{Frame}')
-
-    print("Visualizing the fluid") 
-    if demo:
-        # os.system(f"python3 src/visualize/surface.py --input_dir {output_dir} --frame {Frame}")
-        multi_thread.process(output_dir, Frame, is_coupled=True)
+def test_coupling():
+    if fixed:
+        Renderer = render.Render(camera_location=[-3.28,3.7,1.0], camera_rotation=[math.radians(-30), math.radians(-30), 0]) # Don't remove this line even if it is not used
+        mesh1 = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
+        box_size = [1.2, 0.8, 0.5]
+        # box_size = [0.4, 0.4, 0.4]
+        mesh = src.material.geometry.Box(extents=box_size, center=[0.0, 0.0, 0.0])
+        print("Mesh loaded successfully")
     else:
-        visualizer.visualize(output_dir, Frame)
-
-    video.create_video(output_dir, output_mp4)
-    
-def test_coupling_move_rigid():
-    Renderer = render.Render(camera_location=[-3, 2.7, 0.3-1.5+0.75*2], camera_rotation=[math.radians(-35), math.radians(-40), 0]) # Don't remove this line even if it is not used
-    mesh1 = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
-    box_size = [1.0, 0.8, 1.0]
-    # box_size = [0.4, 0.4, 0.4]
-    mesh = src.material.geometry.Box(extents=box_size, center=[0.0, 0.0, 0.0])
-    mesh.vertices -= np.array([0.0, 0.5, 0.0])
-    print("Mesh loaded successfully")
-    Rigid = rigid.RigidBody(mesh=mesh1, position=np.array([0.0,0.25,-3],dtype=np.float32))
+        Renderer = render.Render(camera_location=[-3, 2.7, 0.3], camera_rotation=[math.radians(-35), math.radians(-40), 0]) # Don't remove this line even if it is not used
+        mesh1 = utils.get_rigid_from_mesh(f'assets/{object_name}.obj')
+        box_size = [1.0, 0.8, 1.0]
+        # box_size = [0.4, 0.4, 0.4]
+        mesh = src.material.geometry.Box(extents=box_size, center=[0.0, 0.0, 0.0])
+        mesh.vertices -= np.array([0.0, 0.5, 0.0])
+        print("Mesh loaded successfully")
+        
+    Rigid = rigid.RigidBody(mesh=mesh1, position=np.array([0.5,-0.5,-5],dtype=np.float32), fixed=fixed)
     
     # Fluid = DFSPH.DFSPH(mesh, position=np.array([0,0.55,-5],dtype=np.float32))
     # Container = DFSPH_container.DFSPHContainer(1.2, 1.5, 0.5, Fluid, Rigid)
-    Fluid = WCSPH.WCSPH(mesh, position=np.array([0,0,-3],dtype=np.float32))
-    Container = WCSPH_container.WCSPHContainer(0.6, 1.0, 0.6, Fluid, Rigid)
+    Fluid = WCSPH.WCSPH(mesh, position=np.array([0,0.55,-5],dtype=np.float32))
+    Container = WCSPH_container.WCSPHContainer(1.2, 1.5, 0.5, Fluid, Rigid)
 
     substeps = int(1 / (Fluid.fps * Fluid.time_step))
     Container.get_rigid_pos()
@@ -227,10 +197,6 @@ def test_coupling_move_rigid():
         if i == 0:
             Container.save_mesh(f'{output_dir}/{i}/container.obj')
     
-    if not os.path.exists(f'{output_dir}/{Frame}'):
-        os.makedirs(f'{output_dir}/{Frame}')
-
-    print("Visualizing the fluid") 
     if demo:
         os.system(f"python3 src/visualize/surface.py --input_dir {output_dir} --frame {Frame}")
         multi_thread.process(output_dir, Frame, is_coupled=True)
@@ -250,7 +216,6 @@ def main():
     # test_cloth()
     test_coupling()
     # test_coupled_cloth_fixed_rigid()
-    # test_coupling_move_rigid()
     # test_coupled_cloth_rigid()
     
 if __name__ == '__main__':

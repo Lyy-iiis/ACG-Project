@@ -15,6 +15,7 @@ ACG-Project
 |   │   visualize
 |   |   |   # File for visualization
 |   assets # obj files
+|   doc # Documentation
 |   main.py
 |   UPDATE_LOG.md
 |   README.md

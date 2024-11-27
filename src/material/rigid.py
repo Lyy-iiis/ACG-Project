@@ -12,7 +12,8 @@ class RigidBody:
                 orientation=np.eye(3), 
                 velocity=np.array([0.0, 0.0, 0.0], dtype=np.float32), 
                 angular_velocity=np.array([0.0, 0.0, 0.0], dtype=np.float32),
-                collision_threshold=np.finfo(np.float32).tiny):
+                collision_threshold=np.finfo(np.float32).tiny,
+                fixed=False):
 
         if type == 'Ball':
             mesh = Ball(radius, center, resolution)
@@ -63,6 +64,7 @@ class RigidBody:
         self.force = ti.Vector.field(3, dtype=ti.f32, shape=())
         self.torque = ti.Vector.field(3, dtype=ti.f32, shape=()) # torque relative to the center of mass
         self.angular_momentum = ti.Vector.field(3, dtype=ti.f32, shape=())
+        self.fixed = fixed
         # self.eular_angles = ti.Vector.field(3, dtype=ti.f32, shape=())
         
     @ti.func
@@ -163,33 +165,34 @@ class RigidBody:
     @ti.kernel
     def update(self, dt_old: float):
         # Linear motion
-        dt = ti.cast(dt_old, ti.f32)
+        if not self.fixed:
+            dt = ti.cast(dt_old, ti.f32)
 
-        acceleration = self.force[None] / self.mass
-        self.velocity[None] += acceleration * dt
-        self.position[None] += self.velocity[None] * dt
+            acceleration = self.force[None] / self.mass
+            self.velocity[None] += acceleration * dt
+            self.position[None] += self.velocity[None] * dt
 
-        # Angular motion
-        # angular_acceleration = self.torque[None] / self.mass  # Simplified, should use inertia tensor
-        angular_acceleration = self.compute_angular_acceleration()
-        self.angular_velocity[None] += angular_acceleration * dt
-        angular_velocity_norm = self.angular_velocity[None].norm()
-        exp_A = ti.Matrix.identity(ti.f32, 3)
-        print(angular_velocity_norm)
-        if angular_velocity_norm > 1e-8:
-            angular_velocity_matrix = ti.Matrix([
-                [0, -self.angular_velocity[None][2], self.angular_velocity[None][1]],
-                [self.angular_velocity[None][2], 0, -self.angular_velocity[None][0]],
-                [-self.angular_velocity[None][1], self.angular_velocity[None][0], 0]
-            ]) / angular_velocity_norm
+            # Angular motion
+            # angular_acceleration = self.torque[None] / self.mass  # Simplified, should use inertia tensor
+            angular_acceleration = self.compute_angular_acceleration()
+            self.angular_velocity[None] += angular_acceleration * dt
+            angular_velocity_norm = self.angular_velocity[None].norm()
+            exp_A = ti.Matrix.identity(ti.f32, 3)
+            # print(angular_velocity_norm)
+            if angular_velocity_norm > 1e-8:
+                angular_velocity_matrix = ti.Matrix([
+                    [0, -self.angular_velocity[None][2], self.angular_velocity[None][1]],
+                    [self.angular_velocity[None][2], 0, -self.angular_velocity[None][0]],
+                    [-self.angular_velocity[None][1], self.angular_velocity[None][0], 0]
+                ]) / angular_velocity_norm
 
-            exp_A = ti.Matrix.identity(ti.f32, 3) + angular_velocity_matrix * ti.sin(angular_velocity_norm * dt) + angular_velocity_matrix @ angular_velocity_matrix * (1 - ti.cos(angular_velocity_norm * dt))
-        # print(exp_A)
-        self.orientation[None] = exp_A @ self.orientation[None]
+                exp_A = ti.Matrix.identity(ti.f32, 3) + angular_velocity_matrix * ti.sin(angular_velocity_norm * dt) + angular_velocity_matrix @ angular_velocity_matrix * (1 - ti.cos(angular_velocity_norm * dt))
+            # print(exp_A)
+            self.orientation[None] = exp_A @ self.orientation[None]
 
-        # Reset forces and torques
-        self.force[None] = ti.Vector([0.0, 0.0, 0.0])
-        self.torque[None] = ti.Vector([0.0, 0.0, 0.0])
+            # Reset forces and torques
+            self.force[None] = ti.Vector([0.0, 0.0, 0.0])
+            self.torque[None] = ti.Vector([0.0, 0.0, 0.0])
         
     @ti.func
     def compute_angular_acceleration(self) -> ti.types.vector(3, ti.f32):
