@@ -111,11 +111,15 @@ def test_cloth():
 
     video.create_video(output_dir, output_mp4)
 
+    
+def test_coupled_cloth(fixed):
+    if fixed:
+        Renderer = render.Render(camera_location=[-1.5, 0, -0.5], camera_rotation=(0, math.radians(-45), 0))
+        Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, 0.25, -2.2]), damping=0.5, sphere_center=[0, 0, -2.0])
+    else:
+        Renderer = render.Render(camera_location=[-1.5, 1.5, 0.3], camera_rotation=(math.radians(90), 0, math.radians(225)))
+        Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, -0.2, 0.25]), fix=1, damping=0.5, gravity=np.array([0, 0, -9.8]), sphere_center=np.array([0, 0, 0.4]))
 
-def test_coupled_cloth_fixed_rigid():
-    Renderer = render.Render(camera_location=[-1.5, 0, -0.5], camera_rotation=(0, math.radians(-45), 0))
-
-    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, 0.25, -2.2]), damping=0.5, sphere_center=[0, 0, -2.0])
     print("Cloth created successfully")
     
     substeps = int(1 / (Cloth.fps * Cloth.time_step))
@@ -131,34 +135,10 @@ def test_coupled_cloth_fixed_rigid():
             Cloth.substep()
 
         print(f"Frame {i}")
-        Renderer.render_coupled_cloth_fixed_rigid(mesh_cloth, f'{output_dir}/{i}/output.png')
+        Renderer.render_coupled_cloth(mesh_cloth, fixed, f'{output_dir}/{i}/output.png', Cloth.sphere_center, Cloth.sphere_radius)
 
     video.create_video(output_dir, output_mp4)
-    
-def test_coupled_cloth_rigid():
-    # Renderer = render.Render(camera_location=[-1.5, 0.3, -0.5], camera_rotation=(0, math.radians(-45), 0))
-    Renderer = render.Render(camera_location=[-1.5, 1.5, 0.3], camera_rotation=(math.radians(90), 0, math.radians(225)))
 
-    Cloth = cloth.Cloth(particle_mass=0.1, initial_position=np.array([-0.2, -0.2, 0.25]), fix=1, damping=0.5, gravity=np.array([0, 0, -9.8]), sphere_center=np.array([0, 0, 0.4]))
-    print("Cloth created successfully")
-    
-    substeps = int(1 / (Cloth.fps * Cloth.time_step))
-    
-    flat_positions = ti.Vector.field(3, dtype=ti.f32, shape=(Cloth.num_particles,))
-
-    for i in range(Frame):
-        Cloth.get_flat_positions(flat_positions)
-        mesh_cloth = src.render.utils.trimesh_to_blender_object(
-                utils.mesh(flat_positions, Cloth.faces),
-                object_name="ClothMesh")
-        for _ in range(substeps):  
-            Cloth.substep()
-
-        print(f"Frame {i}")
-        Renderer.render_coupled_cloth_rigid(mesh_cloth, Cloth.sphere_center, Cloth.sphere_radius, f'{output_dir}/{i}/output.png')
-
-    video.create_video(output_dir, output_mp4)
-    
 
 def test_coupling():
     if fixed:
@@ -215,8 +195,7 @@ def main():
     # test_fluid()
     # test_cloth()
     test_coupling()
-    # test_coupled_cloth_fixed_rigid()
-    # test_coupled_cloth_rigid()
+    # test_coupled_cloth
     
 if __name__ == '__main__':
     main()

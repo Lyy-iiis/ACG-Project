@@ -216,7 +216,8 @@ class Render:
         # Render the current frame to the given file path
         bpy.ops.render.render(write_still=True)
         
-    def render_coupled_cloth_fixed_rigid(self, cloth_mesh, output_path):
+   
+    def render_coupled_cloth(self, cloth_mesh, output_path, fixed=True, center=None, radius=None):
         # Clear all existing meshes before rendering
         bpy.ops.object.select_all(action='DESELECT')
         for obj in bpy.data.objects:
@@ -225,25 +226,38 @@ class Render:
         bpy.ops.object.delete()
 
         ## Add a rigid body sphere object to the scene
-        # Create a new sphere
-        bpy.ops.mesh.primitive_uv_sphere_add(
-            radius=0.1, 
-            location=(0, 0, -2)
-        )
+        if fixed:
+            # Create a new sphere with fixed parameters
+            bpy.ops.mesh.primitive_uv_sphere_add(
+                radius=0.1, 
+                location=(0, 0, -2)
+            )
+        else:
+            # Create a new sphere with dynamic parameters
+            radius_float = float(radius[None])
+            radius_float *= 0.9
+            center_tuple = (center[None][0], center[None][1], center[None][2])
+            bpy.ops.mesh.primitive_uv_sphere_add(
+                radius=radius_float, 
+                location=center_tuple
+            )
         sphere = bpy.context.object  # Get the newly added sphere
-        
+
         # Add rigid body physics to the sphere
         bpy.ops.rigidbody.object_add()
         sphere.rigid_body.type = 'PASSIVE'  # Set the sphere as a passive rigid body
-        
+
         # Load the cloth material
-        material = self.get_material("Satin Fabric", "assets/cloth6.blend")
-        # material = self.get_material("Realistic patterned fabric", "assets/cloth4.blend")
+        if fixed:
+            material = self.get_material("Satin Fabric", "assets/cloth6.blend")
+        else:
+            material = self.get_material("Realistic patterned fabric", "assets/cloth4.blend")
+        
         if cloth_mesh.data.materials:
             cloth_mesh.data.materials[0] = material
         else:
             cloth_mesh.data.materials.append(material)
-        
+
         ## Assign material to the rigid body sphere
         # Load the material
         rigid_material = self.get_material('Realistic procedural gold', 'assets/rigid.blend')
@@ -255,7 +269,7 @@ class Render:
 
         # Ensure the mesh is the active object in the scene
         bpy.context.view_layer.objects.active = cloth_mesh
-        
+
         # Smooth shading
         bpy.ops.object.shade_smooth()
 
@@ -268,63 +282,6 @@ class Render:
 
         # Render the current frame to the given file path
         bpy.ops.render.render(write_still=True)
-        
-    def render_coupled_cloth_rigid(self, cloth_mesh, center, radius, output_path):
-        # Clear all existing meshes before rendering
-        bpy.ops.object.select_all(action='DESELECT')
-        for obj in bpy.data.objects:
-            if obj.type == 'MESH' and obj != cloth_mesh:
-                obj.select_set(True)
-        bpy.ops.object.delete()
-
-        ## Add a rigid body sphere object to the scene
-        # Create a new sphere
-        radius_float = float(radius[None])
-        radius_float *= 0.9
-        center_tuple = (center[None][0], center[None][1], center[None][2])
-        bpy.ops.mesh.primitive_uv_sphere_add(
-            radius=radius_float, 
-            location=center_tuple
-        )
-        sphere = bpy.context.object  # Get the newly added sphere
-        
-        # Add rigid body physics to the sphere
-        bpy.ops.rigidbody.object_add()
-        sphere.rigid_body.type = 'PASSIVE'  # Set the sphere as a passive rigid body
-
-        # Load the cloth material
-        # material = self.get_material("Satin Fabric", "assets/cloth6.blend")
-        material = self.get_material("Realistic patterned fabric", "assets/cloth4.blend")
-        if cloth_mesh.data.materials:
-            cloth_mesh.data.materials[0] = material
-        else:
-            cloth_mesh.data.materials.append(material)
-        
-        ## Assign material to the rigid body sphere
-        # Load the material
-        rigid_material = self.get_material('Realistic procedural gold', 'assets/rigid.blend')
-        # Assign the material to the sphere
-        if sphere.data.materials:
-            sphere.data.materials[0] = rigid_material
-        else:
-            sphere.data.materials.append(rigid_material)
-        
-        # Ensure the mesh is the active object in the scene
-        bpy.context.view_layer.objects.active = cloth_mesh
-        
-        # Smooth shading
-        bpy.ops.object.shade_smooth()
-
-        # Set render parameters (like resolution, camera, etc.)
-        bpy.context.scene.render.filepath = output_path  # Set the output path
-        bpy.context.scene.render.engine = 'CYCLES'  # Use Cycles engine for rendering
-
-        # Set the output image format
-        bpy.context.scene.render.image_settings.file_format = 'PNG'
-
-        # Render the current frame to the given file path
-        bpy.ops.render.render(write_still=True)
-        
 
     def get_material(self, material_name, file_name):
         # Load the .blend file
