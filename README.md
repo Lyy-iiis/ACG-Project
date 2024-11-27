@@ -35,7 +35,7 @@ https://github.com/user-attachments/assets/5f6af6e3-34b0-4b58-8abf-ba0c50f65d2e
 
 https://github.com/user-attachments/assets/0394d752-4cb5-4227-a11e-d18ef5b025be
 
-https://github.com/user-attachments/assets/bf72d6af-b3aa-4a13-8773-35df7be466d0
+https://github.com/user-attachments/assets/a49996d7-b11d-444c-b0a9-9970bcfc52a9
 
 ### Cloth Simulation
 
