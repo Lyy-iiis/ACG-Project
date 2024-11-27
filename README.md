@@ -23,29 +23,15 @@ ACG-Project
 
 ## Demo
 
-### Small Scale Fluid Simulation (WCSPH)
-
-https://github.com/user-attachments/assets/ca0cbeda-95f9-48c9-b504-afa252acb9d9
-
-### Large Scale Fluid Simulation (DFSPH)
-
-https://github.com/user-attachments/assets/5f6af6e3-34b0-4b58-8abf-ba0c50f65d2e
-
 ### Rigid-Fluid Interaction (WCSPH and DFSPH)
 
 https://github.com/user-attachments/assets/0394d752-4cb5-4227-a11e-d18ef5b025be
 
 https://github.com/user-attachments/assets/a49996d7-b11d-444c-b0a9-9970bcfc52a9
 
-### Cloth Simulation
-
-https://github.com/user-attachments/assets/74b2ef8f-fb27-43f5-8ba6-3b241366163b
-
 ### Cloth-Rigid Interaction
 
 Fixed rigid body
-
-https://github.com/user-attachments/assets/4028f1b6-e5ae-431b-982a-d30c5923775f
 
 https://github.com/user-attachments/assets/f2b8f1a9-a5af-4f2b-a8ee-b79fccb92ddb
 
@@ -53,7 +39,7 @@ Movable rigid body
 
 https://github.com/user-attachments/assets/aca1b0f9-4a01-4ecc-82eb-214dd6e589b6
 
-
+For more videos, please refer to the [doc/video.md](doc/video.md).
 
 ## Installation
 
