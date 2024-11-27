@@ -25,9 +25,15 @@ ACG-Project
 
 ### Rigid-Fluid Interaction (WCSPH and DFSPH)
 
+Fixed Rigid body
+
 https://github.com/user-attachments/assets/0394d752-4cb5-4227-a11e-d18ef5b025be
 
 https://github.com/user-attachments/assets/a49996d7-b11d-444c-b0a9-9970bcfc52a9
+
+Movable rigid body
+
+https://github.com/user-attachments/assets/5a1e6553-bab3-47df-897e-e18d5ca27fbb
 
 ### Cloth-Rigid Interaction
 
