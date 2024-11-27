@@ -33,9 +33,9 @@ https://github.com/user-attachments/assets/5f6af6e3-34b0-4b58-8abf-ba0c50f65d2e
 
 ### Rigid-Fluid Interaction (WCSPH and DFSPH)
 
-https://github.com/user-attachments/assets/1f348209-8be1-4035-b11b-24684fd136d0
+https://github.com/user-attachments/assets/0394d752-4cb5-4227-a11e-d18ef5b025be
 
-https://github.com/user-attachments/assets/837c49c2-6097-444c-9041-554311bb1f6a
+https://github.com/user-attachments/assets/bf72d6af-b3aa-4a13-8773-35df7be466d0
 
 ### Cloth Simulation
 
