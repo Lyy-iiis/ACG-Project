@@ -45,6 +45,8 @@ Movable rigid body
 
 https://github.com/user-attachments/assets/aca1b0f9-4a01-4ecc-82eb-214dd6e589b6
 
+https://github.com/user-attachments/assets/2d6644f5-2611-4fcc-97ae-ef2f20a1c7fd
+
 For more videos, please refer to the [doc/video.md](doc/video.md).
 
 ## Installation
