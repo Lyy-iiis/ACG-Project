@@ -1,9 +1,8 @@
-import bpy, mathutils
+import bpy
 
 from src.material.container import base_container
 from src.material.fluid import basefluid
 from src.material import rigid, cloth
-import trimesh
 import src.render.utils
 from src.render import utils
 import src.material.utils
@@ -97,20 +96,6 @@ class Render:
             mesh[i].rotation_euler = utils.get_eular_angles(rigid_body[i].orientation.to_numpy())
         self.render_mesh(mesh, output_path)
         
-    # def add_fluid(self, fluid: fluid.Fluid):
-    #     positions = fluid.positions.to_numpy()  
-    #     # print(f"Fluid positions: {positions}")
-    #     # assert False
-    #     for i in range(positions.shape[0]):
-    #         self.fluid_mesh.append(utils.trimesh_to_blender_object(trimesh.creation.icosphere(radius=0.02, center=positions[i]),
-    #             object_name=f"Fluid_{i}"))
-        
-    # def render_fluid(self, fluid: fluid.Fluid, output_path):
-    #     for i in range(len(self.fluid_mesh)):
-    #         # print(f"Fluid position: {fluid.positions[i]}")
-    #         self.fluid_mesh[i].location = fluid.positions[i]
-    #     self.render_mesh(self.fluid_mesh, output_path)
-        
     def render_fluid(self, mesh, output_path):
         bpy.ops.object.select_all(action='DESELECT')
         for obj in bpy.data.objects:
@@ -147,8 +132,6 @@ class Render:
         bpy.ops.object.delete()
 
         fluid_material = self.get_material("Sea Water.001", "assets/water2.blend")
-        # fluid_material = self.get_material("Water", "assets/water.blend")
-        # fluid_material = self.get_material("Water", "assets/water4.blend") 
         
         fluid_mesh = utils.trimesh_to_blender_object(fluid_mesh, object_name="Fluid")
         if fluid_mesh.data.materials:
