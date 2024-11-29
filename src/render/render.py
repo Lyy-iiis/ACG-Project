@@ -192,6 +192,7 @@ class Render:
         # Set render parameters (like resolution, camera, etc.)
         bpy.context.scene.render.filepath = output_path  # Set the output path
         bpy.context.scene.render.engine = 'CYCLES'  # Use Cycles engine for rendering
+        bpy.context.scene.cycles.samples = 128
 
         # Set the output image format
         bpy.context.scene.render.image_settings.file_format = 'PNG'
@@ -200,7 +201,7 @@ class Render:
         bpy.ops.render.render(write_still=True)
         
    
-    def render_coupled_cloth(self, cloth_mesh, output_path, fixed=True, center=None, radius=None):
+    def render_coupled_cloth(self, cloth_mesh, output_path, fixed=False, center=None, radius=None):
         # Clear all existing meshes before rendering
         bpy.ops.object.select_all(action='DESELECT')
         for obj in bpy.data.objects:
@@ -259,6 +260,7 @@ class Render:
         # Set render parameters (like resolution, camera, etc.)
         bpy.context.scene.render.filepath = output_path  # Set the output path
         bpy.context.scene.render.engine = 'CYCLES'  # Use Cycles engine for rendering
+        bpy.context.scene.cycles.samples = 128
 
         # Set the output image format
         bpy.context.scene.render.image_settings.file_format = 'PNG'

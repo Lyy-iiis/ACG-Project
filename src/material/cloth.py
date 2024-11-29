@@ -74,8 +74,8 @@ class Cloth:
 
         self.initialize_spring_offsets()
         # self.initialize_particles_flat()
-        self.initialize_particles_wrinkled()
-        # self.initialize_particles_wrinkled_z()
+        # self.initialize_particles_wrinkled()
+        self.initialize_particles_wrinkled_z()
         self.generate_faces()
         
         # Hash grid parameters
@@ -186,7 +186,7 @@ class Cloth:
             self.is_fixed[i, j] = 0  # 0: not fixed, 1: fixed
         if fix == 1:
             # fix the top left particle
-            self.is_fixed[0, 0] = 1
+            # self.is_fixed[0, 0] = 1
             # fix the top right particle
             self.is_fixed[self.num_particles_x - 1, 0] = 1
             # fix the bottom left particle
@@ -388,17 +388,17 @@ class Cloth:
         self.compute_forces()
         self.update()
         
-        # self.total_impulse[None] = ti.Vector([0.0, 0.0, 0.0])
+        self.total_impulse[None] = ti.Vector([0.0, 0.0, 0.0])
         
         ## Collision detection with fixed spheres
-        self.collision_with_fixed_sphere()
+        # self.collision_with_fixed_sphere()
         
-        # self.collision_with_sphere()
+        self.collision_with_sphere()
         
         # Self collision
         self.reset_grid()
         self.update_grid()
         self.self_collision()
         
-        # self.sphere_velocity[None] += self.total_impulse[None] / self.sphere_mass[None]
-        # self.update_sphere()
+        self.sphere_velocity[None] += self.total_impulse[None] / self.sphere_mass[None]
+        self.update_sphere()
