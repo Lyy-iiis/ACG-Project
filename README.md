@@ -47,6 +47,10 @@ https://github.com/user-attachments/assets/aca1b0f9-4a01-4ecc-82eb-214dd6e589b6
 
 https://github.com/user-attachments/assets/2d6644f5-2611-4fcc-97ae-ef2f20a1c7fd
 
+### Realtime interactive rendering
+
+<img width="814" alt="Screenshot 2024-11-29 at 09 58 56" src="https://github.com/user-attachments/assets/219f9df0-7b2e-4cae-b04c-8ebf08b5f946">
+
 For more videos, please refer to the [doc/video.md](doc/video.md).
 
 ## Installation
