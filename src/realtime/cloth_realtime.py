@@ -80,7 +80,7 @@ else:
 
 
 @ti.kernel
-def substep(g_x: float, g_y: float, g_z: float, spring_y: float, dashpot_d: float, drag_d: float):
+def substep(g_x: float, g_y: float, g_z: float, spring_y: float, dashpot_d: float, drag_d: float, bc_x: float, bc_y: float, bc_z: float):
     for i in ti.grouped(x):
         v[i] += dt * ti.Vector([g_x, g_y, g_z])
 
@@ -103,7 +103,7 @@ def substep(g_x: float, g_y: float, g_z: float, spring_y: float, dashpot_d: floa
 
     for i in ti.grouped(x):
         v[i] *= ti.exp(-drag_d * dt)
-        offset_to_center = x[i] - ball_center[0]
+        offset_to_center = x[i] - ti.Vector([bc_x, bc_y, bc_z])
         if offset_to_center.norm() <= ball_radius:
             # Velocity projection
             normal = offset_to_center.normalized()
@@ -133,6 +133,15 @@ initialize_mass_points()
 current_t = 0.0
 
 while window.running:
+    cursor_pos = window.get_cursor_pos()  # get the cursor position
+    
+    in_gui = (0.02 <= cursor_pos[0] <= 0.32) and (0.48 <= cursor_pos[1] <= 0.98)
+    
+    if window.is_pressed(ti.ui.LMB) and not in_gui:  # only when the left mouse button is pressed
+        ball_center[0] = [(cursor_pos[0] - 0.5) * 3.05,  # map to [-1, 1]
+                          (cursor_pos[1] - 0.5) * 2.5,
+                          ball_center[0][2]]
+    
     with gui.sub_window("Controls", 0.02, 0.02, 0.3, 0.5):
         gui.text("Simulation Parameters")
         gravity[0] = gui.slider_float("Gravity X", gravity[0], -20.0, 20.0)
@@ -151,7 +160,7 @@ while window.running:
 
     if running[None]:
         for i in range(substeps):
-            substep(*(gravity.to_list()), spring_Y[None], dashpot_damping[None], drag_damping[None])
+            substep(*(gravity.to_list()), spring_Y[None], dashpot_damping[None], drag_damping[None], *ball_center[0].to_list())
             current_t += dt
         update_vertices()
 
