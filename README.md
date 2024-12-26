@@ -1,4 +1,4 @@
-# ACG-Project
+# Realistic Multi-Material Interaction Simulation Pipeline
 
 ## Code Structure
 
