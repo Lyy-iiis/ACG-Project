@@ -3,6 +3,76 @@ import bmesh
 import taichi as ti
 import numpy as np
 import math
+import openvdb as vdb
+import os
+
+def csv_to_openvdb(csv_file, vdb_file, Nx, Ny, Nz):
+    """
+    Convert a CSV file to an OpenVDB file.
+
+    Parameters:
+        csv_file (str): Path to the input CSV file.
+        vdb_file (str): Path to the output VDB file.
+        Nx (int): Number of grid points in the x-direction.
+        Ny (int): Number of grid points in the y-direction.
+        Nz (int): Number of grid points in the z-direction.
+    """
+    # Read CSV file
+    density_np = np.loadtxt(csv_file, delimiter=',')
+    
+    # Reshape to 3D array
+    density_np = density_np.reshape((Nz, Ny, Nx))
+    
+    grid = vdb.FloatGrid()
+    accessor = grid.getAccessor()
+    grid.name = "density"
+    
+    for i in range(density_np.shape[0]):
+        for j in range(density_np.shape[1]):
+            for k in range(density_np.shape[2]):
+                accessor.setValueOn((i, j, k), float(density_np[i, j, k]))
+    
+    # Write to VDB file
+    vdb.write(vdb_file, grids=[grid])
+    print(f"Converted {csv_file} -> {vdb_file}")
+
+def batch_csv_to_vdb(csv_dir, vdb_dir, Nx, Ny, Nz):
+    """
+    Batch process all CSV files in a directory and convert them to VDB files.
+
+    Parameters:
+        csv_dir (str): Path to the directory containing CSV files.
+        vdb_dir (str): Path to the directory to save VDB files.
+        Nx (int): Number of grid points in the x-direction.
+        Ny (int): Number of grid points in the y-direction.
+        Nz (int): Number of grid points in the z-direction.
+    """
+    # Ensure the output directory exists
+    if not os.path.exists(vdb_dir):
+        os.makedirs(vdb_dir)
+    
+    # Process each CSV file in sequence
+    csv_files = sorted([f for f in os.listdir(csv_dir) if f.endswith('.csv')])
+    
+    if not csv_files:
+        print("No CSV files found in the directory.")
+        return
+    
+    for csv_file in csv_files:
+        csv_path = os.path.join(csv_dir, csv_file)
+        vdb_file = os.path.join(vdb_dir, f"{os.path.splitext(csv_file)[0]}.vdb")
+        csv_to_openvdb(csv_path, vdb_file, Nx, Ny, Nz)
+
+if __name__ == "__main__":
+    # Input and output directories
+    csv_dir = "/root/autodl-tmp/Visual-Simulation-of-Smoke/output/csv"  # 输入CSV文件夹路径
+    vdb_dir = "/root/autodl-tmp/Visual-Simulation-of-Smoke/output/vdb"  # 输出VDB文件夹路径
+    
+    # Grid size (modify based on your data)
+    Nx, Ny, Nz = 32, 64, 32
+    
+    batch_csv_to_vdb(csv_dir, vdb_dir, Nx, Ny, Nz)
+
 
 def trimesh_to_blender_object(trimesh_obj, object_name="Bunny"):
     mesh = bpy.data.meshes.new(object_name)

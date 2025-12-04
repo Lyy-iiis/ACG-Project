@@ -1,4 +1,4 @@
-# ACG-Project
+# Realistic Multi-Material Interaction Simulation Pipeline
 
 ## Code Structure
 
@@ -33,7 +33,7 @@ https://github.com/user-attachments/assets/a49996d7-b11d-444c-b0a9-9970bcfc52a9
 
 Movable rigid body
 
-https://github.com/user-attachments/assets/5a1e6553-bab3-47df-897e-e18d5ca27fbb
+https://github.com/user-attachments/assets/c3759e06-526b-4526-b1f9-29ae901550a9
 
 ### Cloth-Rigid Interaction
 
@@ -49,9 +49,13 @@ https://github.com/user-attachments/assets/2d6644f5-2611-4fcc-97ae-ef2f20a1c7fd
 
 ### Realtime interactive rendering
 
-<img width="814" alt="Screenshot 2024-11-29 at 09 58 56" src="https://github.com/user-attachments/assets/219f9df0-7b2e-4cae-b04c-8ebf08b5f946">
+https://github.com/user-attachments/assets/ecb0b677-2147-4369-bfa3-cdd3463f25ef
 
 For more videos, please refer to the [doc/video.md](doc/video.md).
+
+### Smoke Simulation
+
+https://github.com/user-attachments/assets/e734c73b-95f0-43e7-82ce-6c4bada9730b
 
 ## Installation
 
@@ -97,3 +101,10 @@ conda activate acg
 ```bash
 python main.py
 ```
+### TBD
+
+1. Code for PCISPH waitting for update
+
+2. Speed up for DFSPH
+
+3. Modularize code
